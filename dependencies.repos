@@ -1,0 +1,15 @@
+# Every repository listed here will get cloned and built during CI runs.
+# Use this for repositories that cannot be installed via rosdep.
+
+repositories:
+  BehaviorTree.ROS2:
+    type: git
+    url: https://github.com/SMBU-PolarBear-Robotics-Team/BehaviorTree.ROS2.git
+    version: humble
+
+  # pb_rm_interfaces: 已移除，使用本地 robot_msgs 替代
+
+  auto_aim_interfaces:
+    type: git
+    url: https://github.com/SMBU-PolarBear-Robotics-Team/auto_aim_interfaces.git
+    version: main

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  测试行为树: 原地巡逻 + 目标追击 + 返回原点
+  
+  逻辑:
+  1. 如果检测到敌人 → 追击（使用 CalculateAttackPose）
+  2. 如果没有敌人 → 返回原点并原地旋转巡逻
+  
+  使用前请修改 home_position 为你的机器人初始位置
+-->
+<root BTCPP_format="4">
+
+  <!-- 主行为树: 巡逻追击测试 -->
+  <BehaviorTree ID="test_patrol_chase">
+    <KeepRunningUntilFailure>
+      <ForceSuccess>
+        <ReactiveFallback>
+          
+          <!-- 分支1: 检测到敌人 → 追击 -->
+          <ReactiveSequence>
+            <IsDetectEnemy armor_id="1;2;3;4;5;7"
+                          max_distance="8.0"
+                          key_port="{@detector_armors}"/>
+            <SubTree ID="chase_enemy"/>
+          </ReactiveSequence>
+          
+          <!-- 分支2: 没有敌人 → 返回原点巡逻 -->
+          <SubTree ID="patrol_home"/>
+          
+        </ReactiveFallback>
+      </ForceSuccess>
+    </KeepRunningUntilFailure>
+  </BehaviorTree>
+
+  <!-- 子树: 追击敌人 -->
+  <BehaviorTree ID="chase_enemy">
+    <Sequence>
+      <!-- 计算攻击位置 -->
+      <CalculateAttackPose costmap_port="{@nav_globalCostmap}"
+                           tracker_port="{@tracker_target}"
+                           goal="{attack_pose}"
+                           topic_name="debug_attack_pose"/>
+      <!-- 发布导航目标 -->
+      <PubNav2Goal goal="{attack_pose}"
+                   topic_name="goal_pose"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- 子树: 返回原点巡逻 -->
+  <BehaviorTree ID="patrol_home">
+    <Sequence>
+      <!-- 导航回原点 (请修改为你的初始位置: x;y;yaw) -->
+      <PubNav2Goal goal="0;0;0"
+                   topic_name="goal_pose"/>
+      <!-- 原地旋转巡逻 (持续2秒) -->
+      <PublishTwist v_x="0.0"
+                    v_y="0.0"
+                    v_yaw="1.57"
+                    duration="2000"
+                    topic_name="cmd_vel"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- 节点模型定义 (Groot可视化使用) -->
+  <TreeNodesModel>
+    <Condition ID="CalculateAttackPose">
+      <input_port name="costmap_port"
+                  default="{@nav_globalCostmap}"
+                  type="nav_msgs::msg::OccupancyGrid_&lt;std::allocator&lt;void&gt; &gt;">GlobalCostmap port on blackboard</input_port>
+      <input_port name="tracker_port"
+                  default="{@tracker_target}"
+                  type="auto_aim_interfaces::msg::Target_&lt;std::allocator&lt;void&gt; &gt;">Vision target port on blackboard</input_port>
+      <output_port name="goal"
+                   default="{attack_pose}"
+                   type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Attack goal pose</output_port>
+      <input_port name="topic_name"
+                  default="__default__placeholder__"
+                  type="std::string">Topic name for debug visualization</input_port>
+    </Condition>
+    <Condition ID="IsDetectEnemy">
+      <input_port name="armor_id"
+                  default="1;2;3;4;5;7"
+                  type="std::vector&lt;int, std::allocator&lt;int&gt; &gt;">Expected id of armors</input_port>
+      <input_port name="max_distance"
+                  default="8.000000"
+                  type="float">Distance to enemy target</input_port>
+      <input_port name="key_port"
+                  default="{@detector_armors}"
+                  type="auto_aim_interfaces::msg::Armors_&lt;std::allocator&lt;void&gt; &gt;">Vision detector port on blackboard</input_port>
+    </Condition>
+    <Condition ID="PubNav2Goal">
+      <input_port name="goal"
+                  default="0;0;0"
+                  type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Goal pose (x;y;yaw)</input_port>
+      <input_port name="topic_name"
+                  default="__default__placeholder__"
+                  type="std::string">Topic name</input_port>
+    </Condition>
+    <Action ID="PublishTwist">
+      <input_port name="v_x"
+                  default="0.000000"
+                  type="double">Linear X velocity (m/s)</input_port>
+      <input_port name="v_y"
+                  default="0.000000"
+                  type="double">Linear Y velocity (m/s)</input_port>
+      <input_port name="v_yaw"
+                  default="0.000000"
+                  type="double">Angular Z velocity (rad/s)</input_port>
+      <input_port name="duration"
+                  type="std::chrono::milliseconds">Publish duration in milliseconds</input_port>
+      <input_port name="topic_name"
+                  default="__default__placeholder__"
+                  type="std::string">Topic name</input_port>
+    </Action>
+  </TreeNodesModel>
+
+</root>
