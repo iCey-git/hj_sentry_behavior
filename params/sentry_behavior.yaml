@@ -22,5 +22,5 @@ pb2025_sentry_behavior_server:
 
 pb2025_sentry_behavior_client:
   ros__parameters:
-    use_sim_time: true
+    use_sim_time: false
     target_tree: rmul_2025

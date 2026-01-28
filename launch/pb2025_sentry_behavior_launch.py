@@ -18,6 +18,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, PushRosNamespace, SetRemap
 from launch_ros.descriptions import ParameterFile
@@ -31,6 +32,7 @@ def generate_launch_description():
     # Create the launch configuration variables
     namespace = LaunchConfiguration("namespace")
     use_sim_time = LaunchConfiguration("use_sim_time")
+    use_fake_referee = LaunchConfiguration("use_fake_referee")
     params_file = LaunchConfiguration("params_file")
     log_level = LaunchConfiguration("log_level")
 
@@ -66,6 +68,12 @@ def generate_launch_description():
         description="Use simulation (Gazebo) clock if true",
     )
 
+    declare_use_fake_referee_cmd = DeclareLaunchArgument(
+        "use_fake_referee",
+        default_value="true",
+        description="Remap referee topics to fake topics if true",
+    )
+
     declare_params_file_cmd = DeclareLaunchArgument(
         "params_file",
         default_value=os.path.join(bringup_dir, "params", "sentry_behavior.yaml"),
@@ -76,14 +84,21 @@ def generate_launch_description():
         "log_level", default_value="info", description="log level"
     )
 
+    fake_referee_remaps = GroupAction(
+        [
+            SetRemap("/competition_info", "/competition_info_fake"),
+            SetRemap("/rfid_status", "/rfid_status_fake"),
+        ],
+        condition=IfCondition(use_fake_referee),
+    )
+
     bringup_cmd_group = GroupAction(
         [
             PushRosNamespace(namespace=namespace),
             SetRemap("/tf", "tf"),
             SetRemap("/tf_static", "tf_static"),
             # 测试时使用 fake 话题，避免与 simple_robot 冲突
-            SetRemap("/competition_info", "/competition_info_fake"),
-            SetRemap("/rfid_status", "/rfid_status_fake"),
+            fake_referee_remaps,
             Node(
                 package="pb2025_sentry_behavior",
                 executable="pb2025_sentry_behavior_server",
@@ -113,6 +128,7 @@ def generate_launch_description():
     # Declare the launch options
     ld.add_action(declare_namespace_cmd)
     ld.add_action(declare_use_sim_time_cmd)
+    ld.add_action(declare_use_fake_referee_cmd)
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_log_level_cmd)
 
