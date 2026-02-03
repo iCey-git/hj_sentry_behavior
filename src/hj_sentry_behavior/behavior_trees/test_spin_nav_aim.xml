@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  测试行为树: 比赛开始 -> 小陀螺 + 去目标点
+  - 检测到敌人: 停底盘，交给自瞄打
+  - 机器人状态不好: 回起始点
+
+  使用前请修改:
+  - target_goal (目标点)
+  - home_goal   (起始点)
+-->
 <root BTCPP_format="4">
+
+  <!-- 子树: 比赛开始判定 -->
   <BehaviorTree ID="check_game_start">
     <Fallback>
       <IsGameStatus name="IsGameStart"
@@ -24,45 +35,79 @@
     </Fallback>
   </BehaviorTree>
 
-  <BehaviorTree ID="check_robot_status">
-    <Fallback>
-      <IsStatusOK ammo_min="0"
-                  heat_max="350"
-                  hp_min="200"
-                  key_port="{@referee_robotStatus}"/>
-      <ForceFailure>
-        <Fallback>
-          <IsRfidDetected friendly_supply_zone_exchange="false"
-                          friendly_supply_zone_non_exchange="true"
-                          center_gain_point="false"
-                          friendly_fortress_gain_point="false"
-                          key_port="{@referee_rfidStatus}"/>
-          <PubNav2Goal goal="0;0;0"
-                       topic_name="goal_pose"/>
-        </Fallback>
-      </ForceFailure>
-    </Fallback>
+  <!-- 子树: 状态异常则回家 -->
+  <BehaviorTree ID="return_home">
+    <Sequence>
+      <PublishModeControl chassis_gyro="0"
+                          patrol_mode="255"
+                          power_mode="12"
+                          duration="0.0"
+                          topic_name="/mode_ctrl"/>
+      <PubNav2Goal goal="0;0;0"
+                   topic_name="goal_pose"/>
+    </Sequence>
   </BehaviorTree>
 
-  <BehaviorTree ID="rmul_2025">
+  <!-- 子树: 敌人出现 -> 停底盘，让自瞄接管 -->
+  <BehaviorTree ID="stop_for_enemy">
+    <Sequence>
+      <IsDetectEnemy armor_id="1;2;3;4;5;7"
+                    max_distance="8.0"
+                    key_port="{@detector_armors}"/>
+      <PublishModeControl chassis_gyro="0"
+                          patrol_mode="255"
+                          power_mode="12"
+                          duration="0.0"
+                          topic_name="/mode_ctrl"/>
+      <PublishTwist v_y="0.0"
+                    v_yaw="0.0"
+                    v_x="0.0"
+                    duration="0.0"
+                    topic_name="cmd_vel"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- 子树: 正常巡航 -> 开小陀螺 + 去目标点 -->
+  <BehaviorTree ID="go_to_target">
+    <Sequence>
+      <PublishModeControl chassis_gyro="1"
+                          patrol_mode="2"
+                          power_mode="12"
+                          duration="0.0"
+                          topic_name="/mode_ctrl"/>
+      <PubNav2Goal goal="4.65;-3.5;0"
+                   topic_name="goal_pose"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- 主行为树 -->
+  <BehaviorTree ID="test_spin_nav_aim">
     <KeepRunningUntilFailure>
       <ForceSuccess>
         <ReactiveSequence>
           <SubTree ID="check_game_start"/>
-          <PublishModeControl chassis_gyro="1"
-                              patrol_mode="2"
-                              power_mode="12"
-                              duration="0.0"
-                              topic_name="/mode_ctrl"/>
-          <SubTree ID="check_robot_status"/>
-          <PubNav2Goal goal="4.65;-3.5;0"
-                       topic_name="goal_pose"/>
+          <ReactiveFallback>
+            <!-- 状态异常优先 -->
+            <ReactiveSequence>
+              <Inverter>
+                <IsStatusOK ammo_min="0"
+                            heat_max="350"
+                            hp_min="200"
+                            key_port="{@referee_robotStatus}"/>
+              </Inverter>
+              <SubTree ID="return_home"/>
+            </ReactiveSequence>
+            <!-- 有敌人: 停底盘 -->
+            <SubTree ID="stop_for_enemy"/>
+            <!-- 正常: 小陀螺 + 去目标点 -->
+            <SubTree ID="go_to_target"/>
+          </ReactiveFallback>
         </ReactiveSequence>
       </ForceSuccess>
     </KeepRunningUntilFailure>
   </BehaviorTree>
 
-  <!-- Description of Node Models (used by Groot) -->
+  <!-- 节点模型 (Groot可视化用) -->
   <TreeNodesModel>
     <Condition ID="IsGameStatus">
       <input_port name="max_remain_time"
@@ -78,23 +123,6 @@
                   default="{@referee_gameStatus}"
                   type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;">CompetitionInfo port on blackboard</input_port>
     </Condition>
-    <Condition ID="IsRfidDetected">
-      <input_port name="friendly_supply_zone_exchange"
-                  default="false"
-                  type="bool">己方与兑换区重叠的补给区</input_port>
-      <input_port name="friendly_supply_zone_non_exchange"
-                  default="false"
-                  type="bool">己方与兑换区不重叠的补给区 / RMUL 补给区</input_port>
-      <input_port name="center_gain_point"
-                  default="false"
-                  type="bool">中心增益点（仅 RMUL 适用）</input_port>
-      <input_port name="friendly_fortress_gain_point"
-                  default="false"
-                  type="bool">己方堡垒增益点</input_port>
-      <input_port name="key_port"
-                  default="{@referee_rfidStatus}"
-                  type="robot_msgs::msg::RfidStatus_&lt;std::allocator&lt;void&gt; &gt;">RfidStatus port on blackboard</input_port>
-    </Condition>
     <Condition ID="IsStatusOK">
       <input_port name="ammo_min"
                   default="0"
@@ -108,6 +136,17 @@
       <input_port name="key_port"
                   default="{@referee_robotStatus}"
                   type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;">CompetitionInfo port on blackboard</input_port>
+    </Condition>
+    <Condition ID="IsDetectEnemy">
+      <input_port name="armor_id"
+                  default="1;2;3;4;5;7"
+                  type="std::vector&lt;int, std::allocator&lt;int&gt; &gt;">Expected id of armors</input_port>
+      <input_port name="max_distance"
+                  default="8.000000"
+                  type="float">Distance to enemy target</input_port>
+      <input_port name="key_port"
+                  default="{@detector_armors}"
+                  type="auto_aim_interfaces::msg::Armors_&lt;std::allocator&lt;void&gt; &gt;">Vision detector port on blackboard</input_port>
     </Condition>
     <Condition ID="PubNav2Goal">
       <input_port name="goal"

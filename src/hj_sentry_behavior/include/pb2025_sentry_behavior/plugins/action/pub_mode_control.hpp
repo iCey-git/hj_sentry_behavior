@@ -12,30 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__PUB_GIMBAL_VELOCITY_HPP_
-#define PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__PUB_GIMBAL_VELOCITY_HPP_
+#ifndef PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__PUB_MODE_CONTROL_HPP_
+#define PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__PUB_MODE_CONTROL_HPP_
 
 #include <string>
 
 #include "behaviortree_ros2/bt_topic_pub_action_node.hpp"
-#include "pb_rm_interfaces/msg/gimbal_cmd.hpp"
+#include "robot_msgs/msg/mode_control.hpp"
 
 namespace pb2025_sentry_behavior
 {
 
-class PublishGimbalVelocity
-: public BT::RosTopicPubStatefulActionNode<pb_rm_interfaces::msg::GimbalCmd>
+class PublishModeControlAction
+: public BT::RosTopicPubStatefulActionNode<robot_msgs::msg::ModeControl>
 {
 public:
-  PublishGimbalVelocity(
+  PublishModeControlAction(
     const std::string & name, const BT::NodeConfig & config, const BT::RosNodeParams & params);
 
   static BT::PortsList providedPorts();
 
-protected:
-  bool setMessage(pb_rm_interfaces::msg::GimbalCmd & msg) override;
+  bool setMessage(robot_msgs::msg::ModeControl & msg) override;
+
+  bool setHaltMessage(robot_msgs::msg::ModeControl & msg) override;
 };
 
 }  // namespace pb2025_sentry_behavior
 
-#endif  // PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__PUB_GIMBAL_VELOCITY_HPP_
+#endif  // PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__PUB_MODE_CONTROL_HPP_
