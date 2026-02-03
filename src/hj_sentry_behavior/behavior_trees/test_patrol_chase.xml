@@ -41,8 +41,7 @@
                            goal="{attack_pose}"
                            topic_name="debug_attack_pose"/>
       <!-- 发布导航目标 -->
-      <PubNav2Goal goal="{attack_pose}"
-                   topic_name="goal_pose"/>
+      <SendNav2Goal action_name="navigate_to_pose" goal="{attack_pose}"/>
     </Sequence>
   </BehaviorTree>
 
@@ -50,8 +49,7 @@
   <BehaviorTree ID="patrol_home">
     <Sequence>
       <!-- 导航回原点 (请修改为你的初始位置: x;y;yaw) -->
-      <PubNav2Goal goal="0;0;0"
-                   topic_name="goal_pose"/>
+      <SendNav2Goal action_name="navigate_to_pose" goal="0;0;0"/>
       <!-- 原地旋转巡逻 (持续2秒) -->
       <PublishTwist v_x="0.0"
                     v_y="0.0"
@@ -88,14 +86,14 @@
                   default="{@detector_armors}"
                   type="auto_aim_interfaces::msg::Armors_&lt;std::allocator&lt;void&gt; &gt;">Vision detector port on blackboard</input_port>
     </Condition>
-    <Condition ID="PubNav2Goal">
+    <Action ID="SendNav2Goal">
+      <input_port name="action_name"
+                  default=""
+                  type="std::string">Action server name</input_port>
       <input_port name="goal"
                   default="0;0;0"
                   type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Goal pose (x;y;yaw)</input_port>
-      <input_port name="topic_name"
-                  default="__default__placeholder__"
-                  type="std::string">Topic name</input_port>
-    </Condition>
+    </Action>
     <Action ID="PublishTwist">
       <input_port name="v_x"
                   default="0.000000"

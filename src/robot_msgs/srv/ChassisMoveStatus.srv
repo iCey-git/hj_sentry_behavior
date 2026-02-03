@@ -1,0 +1,6 @@
+# 客户端请求时设置状态
+int32 planner_state
+float32 speed_x_adjust
+float32 speed_y_adjust
+---
+int32 result
