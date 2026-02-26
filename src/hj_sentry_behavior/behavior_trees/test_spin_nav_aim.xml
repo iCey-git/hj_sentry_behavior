@@ -54,8 +54,8 @@
       <IsDetectEnemy armor_id="1;2;3;4;5;7"
                     max_distance="8.0"
                     key_port="{@detector_armors}"/>
-      <PublishModeControl chassis_gyro="0"
-                          patrol_mode="255"
+      <PublishModeControl chassis_gyro="1"
+                          patrol_mode="2"
                           power_mode="12"
                           duration="0.0"
                           topic_name="/mode_ctrl"/>

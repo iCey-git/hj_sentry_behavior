@@ -14,9 +14,9 @@ class FakeReferee(Node):
         self.declare_parameter('publish_rate', 10.0)
 
         self.comp_pub = self.create_publisher(
-            CompetitionInfo, '/competition_info_fake', 10)
+            CompetitionInfo, '/competition_info', 10)
         self.rfid_pub = self.create_publisher(
-            RfidStatus, '/rfid_status_fake', 10)
+            RfidStatus, '/rfid_status', 10)
 
         rate = self.get_parameter('publish_rate').value
         self.timer = self.create_timer(1.0 / rate, self.timer_callback)

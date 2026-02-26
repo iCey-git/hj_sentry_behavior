@@ -70,8 +70,8 @@ def generate_launch_description():
 
     declare_use_fake_referee_cmd = DeclareLaunchArgument(
         "use_fake_referee",
-        default_value="true",
-        description="Remap referee topics to fake topics if true",
+        default_value="false",
+        description="Start fake_referee node if true",
     )
 
     declare_params_file_cmd = DeclareLaunchArgument(
@@ -84,11 +84,11 @@ def generate_launch_description():
         "log_level", default_value="info", description="log level"
     )
 
-    fake_referee_remaps = GroupAction(
-        [
-            SetRemap("/competition_info", "/competition_info_fake"),
-            SetRemap("/rfid_status", "/rfid_status_fake"),
-        ],
+    fake_referee_node = Node(
+        package="pb2025_sentry_behavior",
+        executable="fake_referee.py",
+        name="fake_referee",
+        output="screen",
         condition=IfCondition(use_fake_referee),
     )
 
@@ -97,12 +97,10 @@ def generate_launch_description():
             PushRosNamespace(namespace=namespace),
             SetRemap("/tf", "tf"),
             SetRemap("/tf_static", "tf_static"),
-            # 测试时使用 fake 话题，避免与 simple_robot 冲突
-            fake_referee_remaps,
             Node(
                 package="pb2025_sentry_behavior",
                 executable="pb2025_sentry_behavior_server",
-                name="pb2025_sentry_behavior_server",
+                name="bt_action_server",
                 output="screen",
                 parameters=[configured_params],
                 arguments=["--ros-args", "--log-level", log_level],
@@ -110,11 +108,12 @@ def generate_launch_description():
             Node(
                 package="pb2025_sentry_behavior",
                 executable="pb2025_sentry_behavior_client",
-                name="pb2025_sentry_behavior_client",
+                name="sentry_behavior_client",
                 output="screen",
                 parameters=[configured_params],
                 arguments=["--ros-args", "--log-level", log_level],
             ),
+            fake_referee_node,
         ]
     )
 
