@@ -38,10 +38,10 @@
   <!-- 子树: 状态异常则回家 -->
   <BehaviorTree ID="return_home">
     <Sequence>
-      <PublishModeControl chassis_gyro="0"
-                          patrol_mode="255"
+      <PublishModeControl chassis_gyro="1"
+                          patrol_mode="2"
                           power_mode="12"
-                          duration="0.0"
+                          duration="0"
                           topic_name="/mode_ctrl"/>
       <PubNav2Goal goal="0;0;0"
                    topic_name="goal_pose"/>
@@ -55,14 +55,14 @@
                     max_distance="8.0"
                     key_port="{@detector_armors}"/>
       <PublishModeControl chassis_gyro="1"
-                          patrol_mode="2"
+                          patrol_mode="255"
                           power_mode="12"
-                          duration="0.0"
+                          duration="0"
                           topic_name="/mode_ctrl"/>
       <PublishTwist v_y="0.0"
                     v_yaw="0.0"
                     v_x="0.0"
-                    duration="0.0"
+                    duration="0"
                     topic_name="cmd_vel"/>
     </Sequence>
   </BehaviorTree>
@@ -73,7 +73,7 @@
       <PublishModeControl chassis_gyro="1"
                           patrol_mode="2"
                           power_mode="12"
-                          duration="0.0"
+                          duration="0"
                           topic_name="/mode_ctrl"/>
       <PubNav2Goal goal="4.65;-3.5;0"
                    topic_name="goal_pose"/>
@@ -148,14 +148,14 @@
                   default="{@detector_armors}"
                   type="auto_aim_interfaces::msg::Armors_&lt;std::allocator&lt;void&gt; &gt;">Vision detector port on blackboard</input_port>
     </Condition>
-    <Condition ID="PubNav2Goal">
+    <Action ID="PubNav2Goal">
       <input_port name="goal"
                   default="0;0;0"
                   type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
       <input_port name="topic_name"
                   default="__default__placeholder__"
                   type="std::string">Topic name</input_port>
-    </Condition>
+    </Action>
     <Action ID="PublishModeControl">
       <input_port name="chassis_gyro"
                   default="0"

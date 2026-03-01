@@ -37,7 +37,7 @@ BT::NodeStatus IsStatusOKCondition::checkRobotStatus()
 
   const bool is_hp_ok = (msg->our_sentry_hp >= hp_min);
   const bool is_heat_ok = (msg->shooter_17mm_1_barrel_heat <= heat_max);
-  const bool is_ammo_ok = (msg->projectile_allowance_17mm >= ammo_min);
+  const bool is_ammo_ok = (msg->remain_bullet >= ammo_min);
 
   return (is_hp_ok && is_heat_ok && is_ammo_ok) ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;
 }

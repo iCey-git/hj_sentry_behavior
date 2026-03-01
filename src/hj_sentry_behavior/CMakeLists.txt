@@ -100,6 +100,7 @@ endif()
 # 安装 Python 脚本
 install(PROGRAMS
   scripts/fake_referee.py
+  scripts/fake_referee_bad_status.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

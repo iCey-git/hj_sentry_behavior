@@ -32,7 +32,6 @@ class FakeReferee(Node):
         comp.remain_time = remain_time
         comp.our_sentry_hp = our_sentry_hp
         comp.shooter_17mm_1_barrel_heat = 0
-        comp.projectile_allowance_17mm = 100
         comp.our_outpost_hp = 1500
         comp.enemy_outpost_hp = 1500
         comp.enemy_sentry_hp = 400
