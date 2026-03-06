@@ -40,7 +40,7 @@
             <input_port name="topic_name" type="std::string" default="__default__placeholder__">Topic name</input_port>
         </Condition>
         <Action ID="PublishModeControl">
-            <input_port name="chassis_gyro" type="int" default="0">0: off, 1: on</input_port>
+            <input_port name="chassis_gyro" type="int" default="0">0: off, 1: on, 2: alignment correction</input_port>
             <input_port name="power_mode" type="int" default="12">Power mode (e.g. 12=charge, 13=boost)</input_port>
             <input_port name="patrol_mode" type="int" default="2">Patrol mode (e.g. 2=normal, 255=relax)</input_port>
             <input_port name="duration" type="std::chrono::milliseconds" default="">Publish then sleep duration in milliseconds</input_port>

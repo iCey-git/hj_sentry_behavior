@@ -22,7 +22,7 @@ PublishModeControlAction::PublishModeControlAction(
 BT::PortsList PublishModeControlAction::providedPorts()
 {
   return providedBasicPorts(
-    {BT::InputPort<int>("chassis_gyro", 0, "0: off, 1: on"),
+    {BT::InputPort<int>("chassis_gyro", 0, "0: off, 1: on, 2: alignment correction"),
      BT::InputPort<int>("patrol_mode", 2, "Patrol mode (e.g. 2=normal, 255=relax)"),
      BT::InputPort<int>("power_mode", 12, "Power mode (e.g. 12=charge, 13=boost)")});
 }
@@ -37,7 +37,7 @@ bool PublishModeControlAction::setMessage(robot_msgs::msg::ModeControl & msg)
   getInput("patrol_mode", patrol_mode);
   getInput("power_mode", power_mode);
 
-  msg.chassis_gyro = clamp_to_u8(chassis_gyro);
+  msg.chassis_gyro = static_cast<uint16_t>(std::clamp(chassis_gyro, 0, 65535));
   msg.patrol_mode = clamp_to_u8(patrol_mode);
   msg.power_mode = clamp_to_u8(power_mode);
   return true;
