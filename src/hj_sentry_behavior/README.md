@@ -158,7 +158,6 @@ Parameters:
 
 - `key_port`：从 GlobalBlackboard 获取 `RobotStatus` 消息
 - `hp_min`：最低血量
-- `heat_max`：最大发射机构的射击热量
 - `ammo_min`：最小弹丸允许发弹量
 
-如果机器人的 HP、热量和弹药量都在预期范围内，则返回 `SUCCESS`，否则返回 `FAILURE`。
+如果机器人的 HP 和弹药量都在预期范围内，则返回 `SUCCESS`，否则返回 `FAILURE`。

@@ -19,7 +19,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node, PushRosNamespace, SetRemap
 from launch_ros.descriptions import ParameterFile
 from nav2_common.launch import RewrittenYaml
@@ -33,6 +33,8 @@ def generate_launch_description():
     namespace = LaunchConfiguration("namespace")
     use_sim_time = LaunchConfiguration("use_sim_time")
     use_fake_referee = LaunchConfiguration("use_fake_referee")
+    use_server = LaunchConfiguration("use_server")
+    use_client = LaunchConfiguration("use_client")
     params_file = LaunchConfiguration("params_file")
     log_level = LaunchConfiguration("log_level")
 
@@ -74,6 +76,18 @@ def generate_launch_description():
         description="Start fake_referee node if true",
     )
 
+    declare_use_server_cmd = DeclareLaunchArgument(
+        "use_server",
+        default_value="true",
+        description="Whether to start the behavior tree action server",
+    )
+
+    declare_use_client_cmd = DeclareLaunchArgument(
+        "use_client",
+        default_value="true",
+        description="Whether to start the behavior tree action client",
+    )
+
     declare_params_file_cmd = DeclareLaunchArgument(
         "params_file",
         default_value=os.path.join(bringup_dir, "params", "sentry_behavior.yaml"),
@@ -89,7 +103,17 @@ def generate_launch_description():
         executable="fake_referee.py",
         name="fake_referee",
         output="screen",
-        condition=IfCondition(use_fake_referee),
+        condition=IfCondition(
+            PythonExpression(
+                [
+                    "'",
+                    use_fake_referee,
+                    "' in ['true', 'True', '1'] and '",
+                    use_server,
+                    "' in ['true', 'True', '1']",
+                ]
+            )
+        ),
     )
 
     bringup_cmd_group = GroupAction(
@@ -104,6 +128,7 @@ def generate_launch_description():
                 output="screen",
                 parameters=[configured_params],
                 arguments=["--ros-args", "--log-level", log_level],
+                condition=IfCondition(use_server),
             ),
             Node(
                 package="pb2025_sentry_behavior",
@@ -112,6 +137,7 @@ def generate_launch_description():
                 output="screen",
                 parameters=[configured_params],
                 arguments=["--ros-args", "--log-level", log_level],
+                condition=IfCondition(use_client),
             ),
             fake_referee_node,
         ]
@@ -128,6 +154,8 @@ def generate_launch_description():
     ld.add_action(declare_namespace_cmd)
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_use_fake_referee_cmd)
+    ld.add_action(declare_use_server_cmd)
+    ld.add_action(declare_use_client_cmd)
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_log_level_cmd)
 

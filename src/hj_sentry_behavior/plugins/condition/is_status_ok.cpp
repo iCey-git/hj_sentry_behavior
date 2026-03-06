@@ -24,7 +24,7 @@ IsStatusOKCondition::IsStatusOKCondition(const std::string & name, const BT::Nod
 
 BT::NodeStatus IsStatusOKCondition::checkRobotStatus()
 {
-  int hp_min, heat_max, ammo_min;
+  int hp_min, ammo_min;
   auto msg = getInput<robot_msgs::msg::CompetitionInfo>("key_port");
   if (!msg) {
     return BT::NodeStatus::FAILURE;
@@ -32,14 +32,12 @@ BT::NodeStatus IsStatusOKCondition::checkRobotStatus()
   }
 
   getInput("hp_min", hp_min);
-  getInput("heat_max", heat_max);
   getInput("ammo_min", ammo_min);
 
   const bool is_hp_ok = (msg->our_sentry_hp >= hp_min);
-  const bool is_heat_ok = (msg->shooter_17mm_1_barrel_heat <= heat_max);
   const bool is_ammo_ok = (msg->remain_bullet >= ammo_min);
 
-  return (is_hp_ok && is_heat_ok && is_ammo_ok) ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;
+  return (is_hp_ok && is_ammo_ok) ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;
 }
 
 BT::PortsList IsStatusOKCondition::providedPorts()
@@ -48,7 +46,6 @@ BT::PortsList IsStatusOKCondition::providedPorts()
     BT::InputPort<robot_msgs::msg::CompetitionInfo>(
       "key_port", "{@referee_robotStatus}", "CompetitionInfo port on blackboard"),
     BT::InputPort<int>("hp_min", 300, "Minimum HP. NOTE: Sentry init/max HP is 400"),
-    BT::InputPort<int>("heat_max", 350, "Maximum heat. NOTE: Sentry heat limit is 400"),
     BT::InputPort<int>("ammo_min", 0, "Lower then minimum ammo will return FAILURE")};
 }
 }  // namespace pb2025_sentry_behavior

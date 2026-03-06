@@ -11,9 +11,6 @@ float32 target_position_x
 float32 target_position_y
 int8 is_target_active
 
-#机器人状态字段 IsStatusOK 节点调用
-uint16 shooter_17mm_1_barrel_heat   # 枪管热量
-
 uint16 enemy_hero_hp
 uint16 enemy_engineer_hp
 uint16 enemy_infantry_3_hp

@@ -26,7 +26,6 @@
         </Condition>
         <Condition ID="IsStatusOK">
             <input_port name="ammo_min" type="int" default="0">Lower then minimum ammo will return FAILURE</input_port>
-            <input_port name="heat_max" type="int" default="350">Maximum heat. NOTE: Sentry heat limit is 400</input_port>
             <input_port name="hp_min" type="int" default="300">Minimum HP. NOTE: Sentry init/max HP is 400</input_port>
             <input_port name="key_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
         </Condition>
