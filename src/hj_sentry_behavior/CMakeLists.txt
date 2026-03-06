@@ -49,6 +49,9 @@ ament_auto_add_library(is_detect_enemy SHARED plugins/condition/is_detect_enemy.
 list(APPEND plugin_libs is_detect_enemy)
 
 ####### Actions #######
+ament_auto_add_library(nav2_pose SHARED plugins/action/nav2_pose.cpp)
+list(APPEND plugin_libs nav2_pose)
+
 ament_auto_add_library(send_nav2_goal SHARED plugins/action/send_nav2_goal.cpp)
 list(APPEND plugin_libs send_nav2_goal)
 

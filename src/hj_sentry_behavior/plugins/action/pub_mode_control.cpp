@@ -45,10 +45,10 @@ bool PublishModeControlAction::setMessage(robot_msgs::msg::ModeControl & msg)
 
 bool PublishModeControlAction::setHaltMessage(robot_msgs::msg::ModeControl & msg)
 {
-  msg.chassis_gyro = 0;
-  msg.patrol_mode = 0;
-  msg.power_mode = 0;
-  return true;
+  // Branch switching in reactive trees can halt this node frequently.
+  // Publishing a zeroed mode command here causes unintended mode flicker.
+  (void)msg;
+  return false;
 }
 
 }  // namespace pb2025_sentry_behavior

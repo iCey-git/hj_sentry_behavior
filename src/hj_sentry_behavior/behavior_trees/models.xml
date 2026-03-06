@@ -30,6 +30,11 @@
             <input_port name="hp_min" type="int" default="300">Minimum HP. NOTE: Sentry init/max HP is 400</input_port>
             <input_port name="key_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
         </Condition>
+        <Action ID="Nav2Pose">
+            <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
+            <input_port name="goal_pose_topic" type="std::string" default="/goal_pose">Goal pose topic for yaw controller</input_port>
+            <input_port name="action_name" type="std::string" default="navigate_to_pose">Action server name</input_port>
+        </Action>
         <Condition ID="PubNav2Goal">
             <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
             <input_port name="topic_name" type="std::string" default="__default__placeholder__">Topic name</input_port>
