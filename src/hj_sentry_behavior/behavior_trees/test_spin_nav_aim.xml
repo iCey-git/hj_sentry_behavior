@@ -35,7 +35,7 @@
     </Fallback>
   </BehaviorTree>
 
-  <!-- 子树: 状态异常则回家 -->
+  <!-- 子树: 状态异常则回家, 到达后每5s纠偏 -->
   <BehaviorTree ID="return_home">
     <Sequence>
       <PublishModeControl chassis_gyro="1"
@@ -43,9 +43,15 @@
                           power_mode="12"
                           duration="0"
                           topic_name="/mode_ctrl"/>
-      <Nav2Pose action_name="navigate_to_pose"
-                goal_pose_topic="/goal_pose"
-                goal="0;0;0"/>
+      <KeepRunningUntilFailure>
+        <ForceSuccess>
+          <TickAfterTimeout timeout="5.0">
+            <Nav2Pose action_name="navigate_to_pose"
+                      goal_pose_topic="/goal_pose"
+                      goal="-0.2;-0.8;0"/>
+          </TickAfterTimeout>
+        </ForceSuccess>
+      </KeepRunningUntilFailure>
     </Sequence>
   </BehaviorTree>
 
@@ -68,7 +74,7 @@
     </Sequence>
   </BehaviorTree>
 
-  <!-- 子树: 正常巡航 -> 开小陀螺 + 去目标点 -->
+  <!-- 子树: 正常巡航 -> 开小陀螺 + 去目标点, 到达后每5s纠偏 -->
   <BehaviorTree ID="go_to_target">
     <Sequence>
       <PublishModeControl chassis_gyro="1"
@@ -76,9 +82,15 @@
                           power_mode="12"
                           duration="0"
                           topic_name="/mode_ctrl"/>
-      <Nav2Pose action_name="navigate_to_pose"
-                goal_pose_topic="/goal_pose"
-                goal="4.65;-3.5;0"/>
+      <KeepRunningUntilFailure>
+        <ForceSuccess>
+          <TickAfterTimeout timeout="5.0">
+            <Nav2Pose action_name="navigate_to_pose"
+                      goal_pose_topic="/goal_pose"
+                      goal="5.5;-4.1;0"/>
+          </TickAfterTimeout>
+        </ForceSuccess>
+      </KeepRunningUntilFailure>
     </Sequence>
   </BehaviorTree>
 
