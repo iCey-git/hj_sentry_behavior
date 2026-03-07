@@ -10,9 +10,7 @@ class FakeRefereeBadStatus(Node):
 
         # Keep game started, but publish values that make IsStatusOK fail by default.
         self.declare_parameter("game_state", 4)
-        self.declare_parameter("remain_time", 300)
-        self.declare_parameter("our_sentry_hp", 100)  # < hp_min(200)
-        self.declare_parameter("shooter_heat", 380)  # > heat_max(350)
+        self.declare_parameter("our_sentry_hp", 200)  # <= hp_min(200)
         self.declare_parameter("remain_bullet", 500)
         self.declare_parameter("publish_rate", 10.0)
 
@@ -26,9 +24,7 @@ class FakeRefereeBadStatus(Node):
     def timer_callback(self):
         comp = CompetitionInfo()
         comp.game_state = int(self.get_parameter("game_state").value)
-        comp.remain_time = int(self.get_parameter("remain_time").value)
         comp.our_sentry_hp = int(self.get_parameter("our_sentry_hp").value)
-        comp.shooter_17mm_1_barrel_heat = int(self.get_parameter("shooter_heat").value)
         comp.remain_bullet = int(self.get_parameter("remain_bullet").value)
 
         comp.our_outpost_hp = 1500

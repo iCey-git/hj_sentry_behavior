@@ -9,7 +9,6 @@ class FakeReferee(Node):
         super().__init__('fake_referee')
 
         self.declare_parameter('game_state', 4)
-        self.declare_parameter('remain_time', 300)
         self.declare_parameter('our_sentry_hp', 400)
         self.declare_parameter('publish_rate', 10.0)
 
@@ -24,14 +23,11 @@ class FakeReferee(Node):
 
     def timer_callback(self):
         game_state = self.get_parameter('game_state').value
-        remain_time = self.get_parameter('remain_time').value
         our_sentry_hp = self.get_parameter('our_sentry_hp').value
 
         comp = CompetitionInfo()
         comp.game_state = game_state
-        comp.remain_time = remain_time
         comp.our_sentry_hp = our_sentry_hp
-        comp.shooter_17mm_1_barrel_heat = 0
         comp.our_outpost_hp = 1500
         comp.enemy_outpost_hp = 1500
         comp.enemy_sentry_hp = 400
