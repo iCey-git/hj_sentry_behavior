@@ -20,9 +20,15 @@ bt_action_server:
       robot_base_frame: base_footprint          # 修改为匹配导航系统
       visualize: true
 
+    FindReachableGoalInArea:
+      robot_base_frame: base_footprint
+      global_frame: map
+      transform_tolerance: 0.5
+      visualize: true
+
 sentry_behavior_client:
   ros__parameters:
     use_sim_time: false
-    target_tree: test_spin_nav_aim
+    target_tree: rmul_2026
     # target_tree: test_patrol_chase 
     # target_tree: rmul_2025

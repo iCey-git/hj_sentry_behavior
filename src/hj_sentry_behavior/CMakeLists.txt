@@ -67,6 +67,9 @@ list(APPEND plugin_libs pub_twist)
 ament_auto_add_library(calculate_attack_pose SHARED plugins/action/calculate_attack_pose.cpp)
 list(APPEND plugin_libs calculate_attack_pose)
 
+ament_auto_add_library(find_reachable_goal_in_area SHARED plugins/action/find_reachable_goal_in_area.cpp)
+list(APPEND plugin_libs find_reachable_goal_in_area)
+
 ####### Controls #######
 ament_auto_add_library(recovery_node SHARED plugins/control/recovery_node.cpp)
 list(APPEND plugin_libs recovery_node)
