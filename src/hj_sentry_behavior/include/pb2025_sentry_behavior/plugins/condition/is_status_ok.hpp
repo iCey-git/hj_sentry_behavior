@@ -45,6 +45,7 @@ private:
   BT::NodeStatus checkRobotStatus();
 
   rclcpp::Logger logger_ = rclcpp::get_logger("IsStatusOKCondition");
+  bool is_retreating_ = false;  // hysteresis state for HP
 };
 }  // namespace pb2025_sentry_behavior
 

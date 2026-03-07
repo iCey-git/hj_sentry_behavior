@@ -5,8 +5,6 @@
   <BehaviorTree ID="check_game_start">
     <Fallback>
       <IsGameStatus name="IsGameStart"
-                    max_remain_time="420"
-                    min_remain_time="0"
                     expected_game_progress="4"
                     key_port="{@referee_gameStatus}"/>
       <ForceFailure>
@@ -182,8 +180,8 @@
             <ReactiveSequence>
               <Inverter>
                 <IsStatusOK ammo_min="0"
-                            heat_max="350"
                             hp_min="200"
+                            hp_recover="400"
                             key_port="{@referee_robotStatus}"/>
               </Inverter>
               <SubTree ID="return_home"/>
@@ -201,12 +199,6 @@
   <!-- 节点模型 (Groot可视化用) -->
   <TreeNodesModel>
     <Condition ID="IsGameStatus">
-      <input_port name="max_remain_time"
-                  default="420"
-                  type="int">Maximum remaining time (s)</input_port>
-      <input_port name="min_remain_time"
-                  default="0"
-                  type="int">Minimum remaining time (s)</input_port>
       <input_port name="expected_game_progress"
                   default="4"
                   type="int">Expected game progress stage</input_port>
@@ -218,12 +210,12 @@
       <input_port name="ammo_min"
                   default="0"
                   type="int">Lower then minimum ammo will return FAILURE</input_port>
-      <input_port name="heat_max"
-                  default="350"
-                  type="int">Maximum heat. NOTE: Sentry heat limit is 400</input_port>
       <input_port name="hp_min"
-                  default="300"
-                  type="int">Minimum HP. NOTE: Sentry init/max HP is 400</input_port>
+                  default="200"
+                  type="int">HP at or below this triggers retreat</input_port>
+      <input_port name="hp_recover"
+                  default="400"
+                  type="int">HP must reach this to stop retreating</input_port>
       <input_port name="key_port"
                   default="{@referee_robotStatus}"
                   type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;">CompetitionInfo port on blackboard</input_port>

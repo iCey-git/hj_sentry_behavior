@@ -25,7 +25,7 @@ IsGameStatusCondition::IsGameStatusCondition(
 
 BT::NodeStatus IsGameStatusCondition::checkGameStart()
 {
-  int expected_game_progress, min_remain_time, max_remain_time;
+  int expected_game_progress;
   auto msg = getInput<robot_msgs::msg::CompetitionInfo>("key_port");
   if (!msg) {
     RCLCPP_ERROR(logger_, "GameStatus message is not available");
@@ -33,20 +33,14 @@ BT::NodeStatus IsGameStatusCondition::checkGameStart()
   }
 
   getInput("expected_game_progress", expected_game_progress);
-  getInput("min_remain_time", min_remain_time);
-  getInput("max_remain_time", max_remain_time);
 
   RCLCPP_DEBUG(
-    logger_, "Checking: Progress(%d/%d), Remain Time(%ds) in [%d-%d]",
-    static_cast<int>(msg->game_state), expected_game_progress, msg->remain_time,
-    min_remain_time, max_remain_time);
+    logger_, "Checking: game_state(%d) == expected(%d)",
+    static_cast<int>(msg->game_state), expected_game_progress);
 
   const bool is_progress_match = (msg->game_state == expected_game_progress);
-  const bool is_time_in_range =
-    (msg->remain_time >= min_remain_time) && (msg->remain_time <= max_remain_time);
 
-  return (is_progress_match && is_time_in_range) ? BT::NodeStatus::SUCCESS
-                                                 : BT::NodeStatus::FAILURE;
+  return is_progress_match ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;
 }
 
 BT::PortsList IsGameStatusCondition::providedPorts()
