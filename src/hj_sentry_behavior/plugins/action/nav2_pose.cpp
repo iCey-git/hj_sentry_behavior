@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "action_msgs/msg/goal_status.hpp"
+#include "ament_index_cpp/get_package_share_directory.hpp"
 #include "pb2025_sentry_behavior/custom_types.hpp"
 
 namespace pb2025_sentry_behavior
@@ -46,6 +47,10 @@ BT::PortsList Nav2PoseAction::providedPorts()
     BT::InputPort<std::string>("goal_pose_topic", "/goal_pose", "Goal pose topic for yaw controller"),
     BT::InputPort<geometry_msgs::msg::PoseStamped>(
       "goal", "0;0;0", "Expected goal pose that send to nav2. Fill with format `x;y;yaw`"),
+    BT::InputPort<std::string>(
+      "nav2_bt", "",
+      "Nav2 behavior tree XML filename (e.g. navigate_to_pose_hold_position.xml). "
+      "Empty = use nav2 default"),
   };
 }
 
@@ -213,6 +218,23 @@ bool Nav2PoseAction::sendGoal(const geometry_msgs::msg::PoseStamped & goal)
   navigation_goal.pose.header.frame_id = "map";
   navigation_goal.pose.header.stamp = node_->now();
   publishGoalPose(navigation_goal.pose);
+
+  // Set nav2 behavior tree if specified
+  auto nav2_bt = getInput<std::string>("nav2_bt");
+  if (nav2_bt && !nav2_bt->empty()) {
+    try {
+      const auto pkg_share =
+        ament_index_cpp::get_package_share_directory("hj_nav_bringup");
+      navigation_goal.behavior_tree = pkg_share + "/behavior_trees/" + nav2_bt.value();
+      RCLCPP_DEBUG(
+        node_->get_logger(), "[%s] using nav2 BT: %s", name().c_str(),
+        navigation_goal.behavior_tree.c_str());
+    } catch (const std::exception & e) {
+      RCLCPP_WARN(
+        node_->get_logger(), "[%s] failed to resolve nav2 BT '%s': %s, using default",
+        name().c_str(), nav2_bt->c_str(), e.what());
+    }
+  }
 
   auto future_goal_handle = action_client_->async_send_goal(navigation_goal);
   if (

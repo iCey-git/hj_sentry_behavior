@@ -25,6 +25,7 @@
   <depend>robot_msgs</depend>
   <depend>auto_aim_interfaces</depend>
   <depend>nav2_msgs</depend>
+  <depend>ament_index_cpp</depend>
   <depend>sensor_msgs</depend>
   <depend>visualization_msgs</depend>
   <depend>example_interfaces</depend>

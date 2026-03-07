@@ -40,7 +40,8 @@
           <!-- 优先: 精确回到起始点 -->
           <Nav2Pose action_name="navigate_to_pose"
                     goal_pose_topic="/goal_pose"
-                    goal="-0.2;-0.8;0"/>
+                    goal="-0.2;-0.8;0"
+                    nav2_bt="navigate_to_pose_hold_position.xml"/>
           <!-- 兜底: 友军占了 → 查 costmap 找附近可达点 -->
           <Sequence>
             <FindReachableGoalInArea center="-0.2;-0.8;0"
@@ -67,7 +68,8 @@
               <Fallback>
                 <Nav2Pose action_name="navigate_to_pose"
                           goal_pose_topic="/goal_pose"
-                          goal="-0.2;-0.8;0"/>
+                          goal="-0.2;-0.8;0"
+                          nav2_bt="navigate_to_pose_hold_position.xml"/>
                 <Sequence>
                   <FindReachableGoalInArea center="-0.2;-0.8;0"
                                            radius="1.5"
@@ -76,7 +78,8 @@
                                            goal="{reachable_home}"/>
                   <Nav2Pose action_name="navigate_to_pose"
                             goal_pose_topic="/goal_pose"
-                            goal="{reachable_home}"/>
+                            goal="{reachable_home}"
+                            nav2_bt="navigate_to_pose_hold_position.xml"/>
                 </Sequence>
               </Fallback>
             </TickAfterTimeout>
@@ -119,7 +122,8 @@
           <!-- 优先: 直接导航到精确目标点 -->
           <Nav2Pose action_name="navigate_to_pose"
                     goal_pose_topic="/goal_pose"
-                    goal="5.5;-4.1;0"/>
+                    goal="5.5;-4.1;0"
+                    nav2_bt="navigate_to_pose_hold_position.xml"/>
           <!-- 兜底: 目标被占 → 查 costmap 找附近可达点 -->
           <Sequence>
             <FindReachableGoalInArea center="5.5;-4.1;0"
@@ -146,7 +150,8 @@
               <Fallback>
                 <Nav2Pose action_name="navigate_to_pose"
                           goal_pose_topic="/goal_pose"
-                          goal="5.5;-4.1;0"/>
+                          goal="5.5;-4.1;0"
+                          nav2_bt="navigate_to_pose_hold_position.xml"/>
                 <Sequence>
                   <FindReachableGoalInArea center="5.5;-4.1;0"
                                            radius="2.0"
@@ -155,7 +160,8 @@
                                            goal="{reachable_goal}"/>
                   <Nav2Pose action_name="navigate_to_pose"
                             goal_pose_topic="/goal_pose"
-                            goal="{reachable_goal}"/>
+                            goal="{reachable_goal}"
+                            nav2_bt="navigate_to_pose_hold_position.xml"/>
                 </Sequence>
               </Fallback>
             </TickAfterTimeout>
@@ -243,6 +249,9 @@
       <input_port name="goal_pose_topic"
                   default="/goal_pose"
                   type="std::string">Goal pose topic for yaw controller</input_port>
+      <input_port name="nav2_bt"
+                  default=""
+                  type="std::string">Nav2 BT XML filename. Empty = use nav2 default</input_port>
     </Action>
     <Action ID="FindReachableGoalInArea">
       <input_port name="center"
