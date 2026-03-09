@@ -3,8 +3,6 @@
   <BehaviorTree ID="check_game_start">
     <Fallback>
       <IsGameStatus name="IsGameStart"
-                    max_remain_time="420"
-                    min_remain_time="0"
                     expected_game_progress="4"
                     key_port="{@referee_gameStatus}"/>
       <ForceFailure>
@@ -27,8 +25,8 @@
   <BehaviorTree ID="check_robot_status">
     <Fallback>
       <IsStatusOK ammo_min="0"
-                  heat_max="350"
                   hp_min="200"
+                  hp_recover="600"
                   key_port="{@referee_robotStatus}"/>
       <ForceFailure>
         <Fallback>
@@ -65,12 +63,6 @@
   <!-- Description of Node Models (used by Groot) -->
   <TreeNodesModel>
     <Condition ID="IsGameStatus">
-      <input_port name="max_remain_time"
-                  default="420"
-                  type="int">Maximum remaining time (s)</input_port>
-      <input_port name="min_remain_time"
-                  default="0"
-                  type="int">Minimum remaining time (s)</input_port>
       <input_port name="expected_game_progress"
                   default="4"
                   type="int">Expected game progress stage</input_port>

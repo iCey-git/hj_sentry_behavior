@@ -44,6 +44,7 @@ private:
    */
   BT::NodeStatus checkRobotStatus();
 
+  bool is_retreating_ = false;
   rclcpp::Logger logger_ = rclcpp::get_logger("IsStatusOKCondition");
 };
 }  // namespace pb2025_sentry_behavior

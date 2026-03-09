@@ -6,14 +6,19 @@
             <output_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="{attack_pose}">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</output_port>
             <input_port name="topic_name" type="std::string" default="__default__placeholder__">Topic name</input_port>
         </Condition>
+        <Action ID="FindReachableGoalInArea">
+            <input_port name="costmap_port" type="nav_msgs::msg::OccupancyGrid_&lt;std::allocator&lt;void&gt; &gt;" default="{@nav_globalCostmap}">GlobalCostmap port on blackboard</input_port>
+            <output_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="{reachable_goal}">Output: nearest reachable goal pose within the area</output_port>
+            <input_port name="radius" type="double" default="2.000000">Search radius in meters</input_port>
+            <input_port name="cost_threshold" type="int" default="50">Max costmap cost for a feasible point</input_port>
+            <input_port name="center" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Center of search area. Fill with format `x;y;yaw`</input_port>
+        </Action>
         <Condition ID="IsDetectEnemy">
             <input_port name="armor_id" type="std::vector&lt;int, std::allocator&lt;int&gt; &gt;" default="1;2;3;4;5;7">Expected id of armors. Multiple numbers should be separated by the character `;` in Groot2</input_port>
             <input_port name="max_distance" type="float" default="8.000000">Distance to enemy target</input_port>
             <input_port name="key_port" type="auto_aim_interfaces::msg::Armors_&lt;std::allocator&lt;void&gt; &gt;" default="{@detector_armors}">Vision detector port on blackboard</input_port>
         </Condition>
         <Condition ID="IsGameStatus">
-            <input_port name="max_remain_time" type="int" default="420">Maximum remaining time (s)</input_port>
-            <input_port name="min_remain_time" type="int" default="0">Minimum remaining time (s)</input_port>
             <input_port name="expected_game_progress" type="int" default="4">Expected game progress stage</input_port>
             <input_port name="key_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_gameStatus}">CompetitionInfo port on blackboard</input_port>
         </Condition>
@@ -26,8 +31,8 @@
         </Condition>
         <Condition ID="IsStatusOK">
             <input_port name="ammo_min" type="int" default="0">Lower then minimum ammo will return FAILURE</input_port>
-            <input_port name="heat_max" type="int" default="350">Maximum heat. NOTE: Sentry heat limit is 400</input_port>
-            <input_port name="hp_min" type="int" default="300">Minimum HP. NOTE: Sentry init/max HP is 400</input_port>
+            <input_port name="hp_recover" type="int" default="600">HP threshold to stop retreat (full HP)</input_port>
+            <input_port name="hp_min" type="int" default="200">HP threshold to start retreat</input_port>
             <input_port name="key_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
         </Condition>
         <Action ID="Nav2Pose">

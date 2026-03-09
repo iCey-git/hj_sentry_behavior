@@ -21,8 +21,6 @@
             <input_port name="key_port" default="{@detector_armors}" type="auto_aim_interfaces::msg::Armors_&lt;std::allocator&lt;void&gt; &gt;">Vision detector port on blackboard</input_port>
         </Condition>
         <Condition ID="IsGameStatus">
-            <input_port name="max_remain_time" default="420" type="int">Maximum remaining time (s)</input_port>
-            <input_port name="min_remain_time" default="0" type="int">Minimum remaining time (s)</input_port>
             <input_port name="expected_game_progress" default="4" type="int">Expected game progress stage</input_port>
             <input_port name="key_port" default="{@referee_gameStatus}" type="pb_rm_interfaces::msg::GameStatus_&lt;std::allocator&lt;void&gt; &gt;">GameStatus port on blackboard</input_port>
         </Condition>
@@ -35,8 +33,8 @@
         </Condition>
         <Condition ID="IsStatusOK">
             <input_port name="ammo_min" default="0" type="int">Lower then minimum ammo will return FAILURE</input_port>
-            <input_port name="heat_max" default="350" type="int">Maximum heat. NOTE: Sentry heat limit is 400</input_port>
-            <input_port name="hp_min" default="300" type="int">Minimum HP. NOTE: Sentry init/max HP is 400</input_port>
+            <input_port name="hp_min" default="200" type="int">HP threshold to start retreat</input_port>
+            <input_port name="hp_recover" default="600" type="int">HP threshold to stop retreat (full HP)</input_port>
             <input_port name="key_port" default="{@referee_robotStatus}" type="pb_rm_interfaces::msg::RobotStatus_&lt;std::allocator&lt;void&gt; &gt;">RobotStatus port on blackboard</input_port>
         </Condition>
         <Condition ID="PubNav2Goal">
