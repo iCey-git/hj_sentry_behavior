@@ -10,6 +10,7 @@ class FakeReferee(Node):
 
         self.declare_parameter('game_state', 4)
         self.declare_parameter('our_sentry_hp', 400)
+        self.declare_parameter('stage_remain_time', 300)
         self.declare_parameter('publish_rate', 10.0)
 
         self.comp_pub = self.create_publisher(
@@ -24,6 +25,7 @@ class FakeReferee(Node):
     def timer_callback(self):
         game_state = self.get_parameter('game_state').value
         our_sentry_hp = self.get_parameter('our_sentry_hp').value
+        stage_remain_time = self.get_parameter('stage_remain_time').value
 
         comp = CompetitionInfo()
         comp.game_state = game_state
@@ -35,6 +37,7 @@ class FakeReferee(Node):
         comp.enemy_base_hp = 5000
         comp.remain_bullet = 500
         comp.remain_energy = 60
+        comp.stage_remain_time = int(stage_remain_time)
         self.comp_pub.publish(comp)
 
         rfid = RfidStatus()

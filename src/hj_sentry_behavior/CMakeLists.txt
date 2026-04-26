@@ -67,6 +67,24 @@ list(APPEND plugin_libs pub_twist)
 ament_auto_add_library(calculate_attack_pose SHARED plugins/action/calculate_attack_pose.cpp)
 list(APPEND plugin_libs calculate_attack_pose)
 
+ament_auto_add_library(load_waypoints SHARED plugins/action/load_waypoints.cpp)
+list(APPEND plugin_libs load_waypoints)
+
+ament_auto_add_library(get_current_waypoint SHARED plugins/action/get_current_waypoint.cpp)
+list(APPEND plugin_libs get_current_waypoint)
+
+ament_auto_add_library(wait_duration SHARED plugins/action/wait_duration.cpp)
+list(APPEND plugin_libs wait_duration)
+
+ament_auto_add_library(next_waypoint SHARED plugins/action/next_waypoint.cpp)
+list(APPEND plugin_libs next_waypoint)
+
+ament_auto_add_library(select_supply_route_by_area SHARED plugins/action/select_supply_route_by_area.cpp)
+list(APPEND plugin_libs select_supply_route_by_area)
+
+ament_auto_add_library(reset_supply_route SHARED plugins/action/reset_supply_route.cpp)
+list(APPEND plugin_libs reset_supply_route)
+
 ####### Controls #######
 ament_auto_add_library(recovery_node SHARED plugins/control/recovery_node.cpp)
 list(APPEND plugin_libs recovery_node)

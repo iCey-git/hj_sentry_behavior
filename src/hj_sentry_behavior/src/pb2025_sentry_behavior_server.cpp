@@ -42,9 +42,65 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
   node()->declare_parameter("use_cout_logger", false);
   node()->get_parameter("use_cout_logger", use_cout_logger_);
 
-  // 使用 robot_msgs 替代 pb_rm_interfaces，同一个话题填充两个黑板键
-  subscribe<robot_msgs::msg::CompetitionInfo>("/competition_info", "referee_gameStatus");
-  subscribe<robot_msgs::msg::CompetitionInfo>("/competition_info", "referee_robotStatus");
+  auto set_parameter_to_blackboard =
+    [this](const std::string & name, const rclcpp::ParameterValue & default_value) {
+      node()->declare_parameter(name, default_value);
+      rclcpp::Parameter parameter;
+      node()->get_parameter(name, parameter);
+      switch (parameter.get_type()) {
+        case rclcpp::ParameterType::PARAMETER_INTEGER:
+          globalBlackboard()->set(name, static_cast<int>(parameter.as_int()));
+          break;
+        case rclcpp::ParameterType::PARAMETER_STRING:
+          globalBlackboard()->set(name, parameter.as_string());
+          break;
+        default:
+          break;
+      }
+    };
+
+  set_parameter_to_blackboard("supply_ammo_min", rclcpp::ParameterValue(50));
+  set_parameter_to_blackboard("supply_hp_min", rclcpp::ParameterValue(200));
+  set_parameter_to_blackboard("supply_hp_recover", rclcpp::ParameterValue(400));
+  set_parameter_to_blackboard(
+    "supply_our_half_route", rclcpp::ParameterValue(std::string{}));
+  set_parameter_to_blackboard(
+    "supply_u_inner_route", rclcpp::ParameterValue(std::string{}));
+  set_parameter_to_blackboard(
+    "supply_highland_route", rclcpp::ParameterValue(std::string{}));
+  set_parameter_to_blackboard(
+    "supply_our_half_polygon", rclcpp::ParameterValue(std::string{}));
+  set_parameter_to_blackboard(
+    "supply_u_inner_polygon", rclcpp::ParameterValue(std::string{}));
+  set_parameter_to_blackboard(
+    "supply_highland_polygon", rclcpp::ParameterValue(std::string{}));
+  set_parameter_to_blackboard("base_protect_hp_threshold", rclcpp::ParameterValue(1500));
+  set_parameter_to_blackboard(
+    "base_protect_route", rclcpp::ParameterValue(std::string{}));
+  set_parameter_to_blackboard(
+    "outpost_pressure_route", rclcpp::ParameterValue(std::string{}));
+  set_parameter_to_blackboard("patrol_phase_threshold", rclcpp::ParameterValue(180));
+  set_parameter_to_blackboard(
+    "patrol_early_route", rclcpp::ParameterValue(std::string{}));
+  set_parameter_to_blackboard(
+    "patrol_late_route", rclcpp::ParameterValue(std::string{}));
+  globalBlackboard()->set("supply_route_locked", false);
+  globalBlackboard()->set("selected_supply_route", std::string{});
+
+  auto competition_sub = node()->create_subscription<robot_msgs::msg::CompetitionInfo>(
+    "/competition_info", rclcpp::SystemDefaultsQoS(),
+    [this](const robot_msgs::msg::CompetitionInfo::SharedPtr msg) {
+      globalBlackboard()->set("referee_gameStatus", *msg);
+      globalBlackboard()->set("referee_robotStatus", *msg);
+      globalBlackboard()->set("game_state", static_cast<int>(msg->game_state));
+      globalBlackboard()->set("our_sentry_hp", static_cast<int>(msg->our_sentry_hp));
+      globalBlackboard()->set("remain_bullet", static_cast<int>(msg->remain_bullet));
+      globalBlackboard()->set("our_base_hp", static_cast<int>(msg->our_base_hp));
+      globalBlackboard()->set("enemy_outpost_hp", static_cast<int>(msg->enemy_outpost_hp));
+      globalBlackboard()->set("stage_remain_time", static_cast<int>(msg->stage_remain_time));
+    });
+  subscriptions_.push_back(competition_sub);
+
   subscribe<robot_msgs::msg::RfidStatus>("/rfid_status", "referee_rfidStatus");
 
   auto detector_qos = rclcpp::SensorDataQoS();

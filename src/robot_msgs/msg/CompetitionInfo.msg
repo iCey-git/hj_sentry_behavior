@@ -20,3 +20,4 @@ uint16 our_infantry_3_hp
 uint16 our_infantry_4_hp
 uint16 enemy_base_hp
 uint16 remain_energy
+uint16 stage_remain_time        # 当前阶段剩余时间（秒）

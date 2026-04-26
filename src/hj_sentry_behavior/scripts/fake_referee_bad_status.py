@@ -12,6 +12,7 @@ class FakeRefereeBadStatus(Node):
         self.declare_parameter("game_state", 4)
         self.declare_parameter("our_sentry_hp", 100)  # < hp_min(200)
         self.declare_parameter("remain_bullet", 500)
+        self.declare_parameter("stage_remain_time", 300)
         self.declare_parameter("publish_rate", 10.0)
 
         self.comp_pub = self.create_publisher(CompetitionInfo, "/competition_info", 10)
@@ -26,6 +27,7 @@ class FakeRefereeBadStatus(Node):
         comp.game_state = int(self.get_parameter("game_state").value)
         comp.our_sentry_hp = int(self.get_parameter("our_sentry_hp").value)
         comp.remain_bullet = int(self.get_parameter("remain_bullet").value)
+        comp.stage_remain_time = int(self.get_parameter("stage_remain_time").value)
 
         comp.our_outpost_hp = 1500
         comp.enemy_outpost_hp = 1500

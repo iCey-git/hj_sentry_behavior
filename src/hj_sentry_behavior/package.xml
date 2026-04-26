@@ -22,6 +22,7 @@
   <depend>tf2_geometry_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>behaviortree_ros2</depend>
+  <depend>ament_index_cpp</depend>
   <depend>robot_msgs</depend>
   <depend>auto_aim_interfaces</depend>
   <depend>nav2_msgs</depend>

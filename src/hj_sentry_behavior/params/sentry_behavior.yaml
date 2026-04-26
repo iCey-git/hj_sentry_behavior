@@ -20,9 +20,40 @@ bt_action_server:
       robot_base_frame: base_footprint          # 修改为匹配导航系统
       visualize: true
 
+    # ─────────────────────────────────────────────────────────────
+    # RMUC 2026 策略参数 (红蓝方分别配置, 切换方式: 改 target_tree 并修改此处)
+    # ─────────────────────────────────────────────────────────────
+
+    # ── P2 补给参数 ──────────────────────────────────────────────
+    supply_ammo_min: 50                         # 弹药低于此值触发补给
+    supply_hp_min: 200                          # HP 低于此值触发补给
+    supply_hp_recover: 400                      # HP 恢复到此值才解除补给状态
+
+    # 补给路线选择 (蓝方示例 - 坐标和路线需根据实际 RMUC 地图调整)
+    supply_our_half_route: "pb2025_sentry_behavior/behavior_trees/routes/blue/supply_from_our_half.csv"
+    supply_u_inner_route: "pb2025_sentry_behavior/behavior_trees/routes/blue/supply_from_u_inner.csv"
+    supply_highland_route: "pb2025_sentry_behavior/behavior_trees/routes/blue/supply_from_highland.csv"
+
+    # 三类补给区域四边形边界 (格式: "x1,y1;x2,y2;x3,y3;x4,y4")
+    supply_our_half_polygon: "0.0,0.0;4.0,0.0;4.0,-4.0;0.0,-4.0"
+    supply_u_inner_polygon: "4.0,0.0;7.0,0.0;7.0,-4.0;4.0,-4.0"
+    supply_highland_polygon: "7.0,0.0;10.0,0.0;10.0,-4.0;7.0,-4.0"
+
+    # ── P3 保卫基地参数 ──────────────────────────────────────────
+    base_protect_hp_threshold: 1500             # 我方基地 HP 低于此值则切入守基地模式
+    base_protect_route: "pb2025_sentry_behavior/behavior_trees/routes/blue/protect_base.csv"
+
+    # ── P5 前哨站施压参数 ────────────────────────────────────────
+    outpost_pressure_route: "pb2025_sentry_behavior/behavior_trees/routes/blue/pressure_outpost.csv"
+
+    # ── P6 巡逻参数 ──────────────────────────────────────────────
+    patrol_phase_threshold: 180                 # 剩余时间(秒)高于此值走前期路线，否则走后期路线
+    patrol_early_route: "pb2025_sentry_behavior/behavior_trees/routes/blue/patrol_early.csv"
+    patrol_late_route: "pb2025_sentry_behavior/behavior_trees/routes/blue/patrol_late.csv"
+
 sentry_behavior_client:
   ros__parameters:
     use_sim_time: false
-    target_tree: test_spin_nav_aim
-    # target_tree: test_patrol_chase 
+    target_tree: rmuc_2026
+    # target_tree: test_spin_nav_aim
     # target_tree: rmul_2025

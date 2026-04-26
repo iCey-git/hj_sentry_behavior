@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root BTCPP_format="4" project_name="Project">
     <include path="rmul_2025.xml"/>
+    <include path="rmuc_2026.xml"/>
     <include path="test_spin_nav_aim.xml"/>
     <!-- Description of Node Models (used by Groot) -->
     <TreeNodesModel>
@@ -22,25 +23,37 @@
         </Condition>
         <Condition ID="IsGameStatus">
             <input_port name="expected_game_progress" default="4" type="int">Expected game progress stage</input_port>
-            <input_port name="key_port" default="{@referee_gameStatus}" type="pb_rm_interfaces::msg::GameStatus_&lt;std::allocator&lt;void&gt; &gt;">GameStatus port on blackboard</input_port>
+            <input_port name="key_port" default="{@referee_gameStatus}" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;">CompetitionInfo port on blackboard</input_port>
         </Condition>
         <Condition ID="IsRfidDetected">
             <input_port name="friendly_supply_zone_exchange" default="false" type="bool">己方与兑换区重叠的补给区</input_port>
             <input_port name="friendly_supply_zone_non_exchange" default="false" type="bool">己方与兑换区不重叠的补给区 / RMUL 补给区</input_port>
             <input_port name="center_gain_point" default="false" type="bool">中心增益点（仅 RMUL 适用）</input_port>
             <input_port name="friendly_fortress_gain_point" default="false" type="bool">己方堡垒增益点</input_port>
-            <input_port name="key_port" default="{@referee_rfidStatus}" type="pb_rm_interfaces::msg::RfidStatus_&lt;std::allocator&lt;void&gt; &gt;">RfidStatus port on blackboard</input_port>
+            <input_port name="key_port" default="{@referee_rfidStatus}" type="robot_msgs::msg::RfidStatus_&lt;std::allocator&lt;void&gt; &gt;">RfidStatus port on blackboard</input_port>
         </Condition>
         <Condition ID="IsStatusOK">
             <input_port name="ammo_min" default="0" type="int">Lower then minimum ammo will return FAILURE</input_port>
             <input_port name="hp_min" default="200" type="int">HP threshold to start retreat</input_port>
-            <input_port name="hp_recover" default="600" type="int">HP threshold to stop retreat (full HP)</input_port>
-            <input_port name="key_port" default="{@referee_robotStatus}" type="pb_rm_interfaces::msg::RobotStatus_&lt;std::allocator&lt;void&gt; &gt;">RobotStatus port on blackboard</input_port>
+            <input_port name="hp_recover" default="400" type="int">HP threshold to stop retreat (full HP)</input_port>
+            <input_port name="key_port" default="{@referee_robotStatus}" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;">CompetitionInfo port on blackboard</input_port>
         </Condition>
         <Condition ID="PubNav2Goal">
             <input_port name="goal" default="0;0;0" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
             <input_port name="topic_name" default="__default__placeholder__" type="std::string">Topic name</input_port>
         </Condition>
+        <Action ID="Nav2Pose">
+            <input_port name="goal" default="0;0;0" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
+            <input_port name="action_name" default="navigate_to_pose" type="std::string">Action server name</input_port>
+            <input_port name="goal_pose_topic" default="/goal_pose" type="std::string">Goal pose topic for yaw controller</input_port>
+        </Action>
+        <Action ID="PublishModeControl">
+            <input_port name="chassis_gyro" default="0" type="int">0: off, 1: on, 2: alignment correction</input_port>
+            <input_port name="patrol_mode" default="2" type="int">Patrol mode (2=normal, 255=relax)</input_port>
+            <input_port name="power_mode" default="12" type="int">Power mode (12=charge)</input_port>
+            <input_port name="duration" default="0" type="int">Duration ms</input_port>
+            <input_port name="topic_name" default="/mode_ctrl" type="std::string">Topic name</input_port>
+        </Action>
         <Action ID="PublishTwist">
             <input_port name="v_y" default="0.000000" type="double">Linear Y velocity (m/s)</input_port>
             <input_port name="v_yaw" default="0.000000" type="double">Angular Z velocity (rad/s)</input_port>
@@ -48,18 +61,58 @@
             <input_port name="duration" type="std::chrono::milliseconds">Publish then sleep duration in milliseconds</input_port>
             <input_port name="topic_name" default="__default__placeholder__" type="std::string">Topic name</input_port>
         </Action>
-        <Decorator ID="RateController">
-            <input_port name="hz" default="10.000000" type="double">Rate</input_port>
-        </Decorator>
-        <Control ID="RecoveryNode">
-            <input_port name="num_attempts" default="999" type="int">Number of retries</input_port>
-        </Control>
         <Action ID="SendNav2Goal">
             <input_port name="goal" default="0;0;0" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
             <input_port name="action_name" type="std::string">Action server name</input_port>
         </Action>
+        <!-- 新增: 路线控制节点 -->
+        <Action ID="LoadWaypoints">
+            <input_port name="waypoint_file" default="" type="std::string">CSV 路线文件路径，支持包内路径和 COD waypoint_editor 格式</input_port>
+            <output_port name="waypoints" default="{route_waypoints}" type="std::vector">航点列表</output_port>
+            <output_port name="wait_times" default="{route_wait_times}" type="std::vector">等待时长列表</output_port>
+            <output_port name="total_waypoints" default="{route_total_wp}" type="int">航点总数</output_port>
+            <output_port name="wp_idx" default="{route_wp_idx}" type="int">当前航点索引(重置为0)</output_port>
+        </Action>
+        <Action ID="GetCurrentWaypoint">
+            <input_port name="waypoints" default="{route_waypoints}" type="std::vector">航点列表</input_port>
+            <input_port name="wait_times" default="{route_wait_times}" type="std::vector">等待时长列表</input_port>
+            <input_port name="wp_idx" default="{route_wp_idx}" type="int">当前索引</input_port>
+            <output_port name="current_goal" default="{current_goal}" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt;&gt;">当前目标位姿</output_port>
+            <output_port name="current_wait_sec" default="{current_wait_sec}" type="double">当前等待秒数</output_port>
+        </Action>
+        <Action ID="WaitDuration">
+            <input_port name="wait_sec" default="0.0" type="double">等待时长（秒），&lt;=0 跳过</input_port>
+        </Action>
+        <Action ID="NextWaypoint">
+            <input_port name="total_waypoints" default="{route_total_wp}" type="int">航点总数</input_port>
+            <inout_port name="wp_idx" default="{route_wp_idx}" type="int">当前航点索引（读取后递增并写回）</inout_port>
+        </Action>
+        <Action ID="SelectSupplyRouteByArea">
+            <input_port name="base_frame" default="base_link" type="std::string">机器人底盘 TF 坐标系</input_port>
+            <input_port name="map_frame" default="map" type="std::string">地图坐标系</input_port>
+            <input_port name="our_half_route" default="" type="std::string">我方半场 CSV 路线文件路径</input_port>
+            <input_port name="u_inner_route" default="" type="std::string">U 字通道内部 CSV 路线文件路径</input_port>
+            <input_port name="highland_route" default="" type="std::string">中央高地 CSV 路线文件路径</input_port>
+            <input_port name="our_half_polygon" default="" type="std::string">我方半场四边形顶点 x1,y1;x2,y2;x3,y3;x4,y4</input_port>
+            <input_port name="u_inner_polygon" default="" type="std::string">U 字通道内部四边形顶点 x1,y1;x2,y2;x3,y3;x4,y4</input_port>
+            <input_port name="highland_polygon" default="" type="std::string">中央高地四边形顶点 x1,y1;x2,y2;x3,y3;x4,y4</input_port>
+            <inout_port name="supply_route_locked" default="{supply_route_locked}" type="bool">是否已锁定本次补给路线</inout_port>
+            <inout_port name="selected_supply_route" default="{selected_supply_route}" type="std::string">本次选定的路线文件路径</inout_port>
+        </Action>
+        <Action ID="ResetSupplyRoute">
+            <output_port name="supply_route_locked" default="{supply_route_locked}" type="bool">锁定标志写回</output_port>
+            <output_port name="selected_supply_route" default="{selected_supply_route}" type="std::string">本次选定的路线文件路径</output_port>
+        </Action>
+        <!-- Decorators -->
+        <Decorator ID="RateController">
+            <input_port name="hz" default="10.000000" type="double">Rate</input_port>
+        </Decorator>
         <Decorator ID="TickAfterTimeout">
             <input_port name="timeout" type="float">time in s to wait before ticking child again</input_port>
         </Decorator>
+        <!-- Controls -->
+        <Control ID="RecoveryNode">
+            <input_port name="num_attempts" default="999" type="int">Number of retries</input_port>
+        </Control>
     </TreeNodesModel>
 </root>
