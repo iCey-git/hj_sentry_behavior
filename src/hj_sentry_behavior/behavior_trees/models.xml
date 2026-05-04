@@ -6,13 +6,30 @@
             <output_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="{attack_pose}">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</output_port>
             <input_port name="topic_name" type="std::string" default="__default__placeholder__">Topic name</input_port>
         </Condition>
-        <Action ID="FindReachableGoalInArea">
-            <input_port name="costmap_port" type="nav_msgs::msg::OccupancyGrid_&lt;std::allocator&lt;void&gt; &gt;" default="{@nav_globalCostmap}">GlobalCostmap port on blackboard</input_port>
-            <output_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="{reachable_goal}">Output: nearest reachable goal pose within the area</output_port>
-            <input_port name="radius" type="double" default="2.000000">Search radius in meters</input_port>
-            <input_port name="cost_threshold" type="int" default="50">Max costmap cost for a feasible point</input_port>
-            <input_port name="center" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Center of search area. Fill with format `x;y;yaw`</input_port>
+        <Condition ID="EnemyStopGate">
+            <input_port name="rough_chassis_gyro" type="int" default="0">Chassis gyro value on rough road</input_port>
+            <input_port name="rough_road_active" type="bool" default="false">Override chassis gyro on rough road</input_port>
+            <input_port name="linger_sec" type="double" default="0.800000">Keep stop state for this many seconds after the last valid enemy</input_port>
+            <input_port name="stale_timeout_sec" type="double" default="0.300000">Treat stale target messages as no enemy after this timeout</input_port>
+            <input_port name="rx_time_sec" type="double" default="{@target_info_rx_time_sec}">Last receive time of target_info in ROS time seconds</input_port>
+            <input_port name="max_distance" type="float" default="8.000000">Distance to enemy target</input_port>
+            <input_port name="key_port" type="robot_msgs::msg::OmniPerception_&lt;std::allocator&lt;void&gt; &gt;" default="{@target_info}">OmniPerception target info on blackboard</input_port>
+        </Condition>
+        <Action ID="GetCurrentWaypoint">
+            <output_port name="current_goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">当前目标位姿</output_port>
+            <output_port name="current_wait_sec" type="double">当前航点等待秒数</output_port>
+            <input_port name="wp_idx" type="int" default="0">当前航点索引</input_port>
+            <input_port name="wait_times" type="std::vector&lt;double, std::allocator&lt;double&gt; &gt;">每个航点的等待时长(秒)</input_port>
+            <input_port name="waypoints" type="std::vector&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;, std::allocator&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt; &gt; &gt;">LoadWaypoints 输出的航点列表</input_port>
         </Action>
+        <Condition ID="IsBlackboardBool">
+            <input_port name="expected" type="bool" default="true">Expected value</input_port>
+            <input_port name="value" type="bool" default="false">Blackboard boolean value</input_port>
+        </Condition>
+        <Condition ID="IsBlackboardString">
+            <input_port name="expected" type="std::string" default="">Expected string value</input_port>
+            <input_port name="value" type="std::string" default="">Blackboard string value</input_port>
+        </Condition>
         <Condition ID="IsDetectEnemy">
             <input_port name="armor_id" type="std::vector&lt;int, std::allocator&lt;int&gt; &gt;" default="1;2;3;4;5;7">Expected id of armors. Multiple numbers should be separated by the character `;` in Groot2</input_port>
             <input_port name="max_distance" type="float" default="8.000000">Distance to enemy target</input_port>
@@ -21,6 +38,12 @@
         <Condition ID="IsGameStatus">
             <input_port name="expected_game_progress" type="int" default="4">Expected game progress stage</input_port>
             <input_port name="key_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_gameStatus}">CompetitionInfo port on blackboard</input_port>
+        </Condition>
+        <Condition ID="IsNearPose">
+            <input_port name="base_frame" type="std::string" default="base_footprint">Robot base frame</input_port>
+            <input_port name="map_frame" type="std::string" default="map">Map frame</input_port>
+            <input_port name="position_tolerance" type="double" default="0.450000">XY distance tolerance in meters</input_port>
+            <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Target pose in map frame</input_port>
         </Condition>
         <Condition ID="IsRfidDetected">
             <input_port name="friendly_supply_zone_exchange" type="bool" default="false">己方与兑换区重叠的补给区</input_port>
@@ -35,10 +58,26 @@
             <input_port name="hp_min" type="int" default="200">HP threshold to start retreat</input_port>
             <input_port name="key_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
         </Condition>
+        <Action ID="LoadWaypoints">
+            <output_port name="wp_idx" type="int">当前航点索引，重置为 0</output_port>
+            <output_port name="total_waypoints" type="int">航点总数</output_port>
+            <output_port name="wait_times" type="std::vector&lt;double, std::allocator&lt;double&gt; &gt;">每个航点的等待时长(秒)</output_port>
+            <output_port name="waypoints" type="std::vector&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;, std::allocator&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt; &gt; &gt;">加载的航点列表</output_port>
+            <input_port name="waypoint_file" type="std::string" default="">CSV 路线文件路径，支持包内路径和 COD waypoint_editor 格式</input_port>
+        </Action>
         <Action ID="Nav2Pose">
             <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
             <input_port name="goal_pose_topic" type="std::string" default="/goal_pose">Goal pose topic for yaw controller</input_port>
             <input_port name="action_name" type="std::string" default="navigate_to_pose">Action server name</input_port>
+        </Action>
+        <Action ID="Nav2ThroughPoses">
+            <input_port name="goals" type="std::vector&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;, std::allocator&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt; &gt; &gt;">Waypoint list</input_port>
+            <input_port name="goal_pose_topic" type="std::string" default="/goal_pose">Final goal pose topic</input_port>
+            <input_port name="action_name" type="std::string" default="navigate_through_poses">Action server name</input_port>
+        </Action>
+        <Action ID="NextWaypoint">
+            <inout_port name="wp_idx" type="int">当前航点索引（读取后递增并写回）</inout_port>
+            <input_port name="total_waypoints" type="int" default="0">航点总数</input_port>
         </Action>
         <Condition ID="PubNav2Goal">
             <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
@@ -48,7 +87,9 @@
             <input_port name="chassis_gyro" type="int" default="0">0: off, 1: on, 2: alignment correction</input_port>
             <input_port name="power_mode" type="int" default="12">Power mode (e.g. 12=charge, 13=boost)</input_port>
             <input_port name="patrol_mode" type="int" default="2">Patrol mode (e.g. 2=normal, 255=relax)</input_port>
+            <input_port name="rough_road_active" type="bool" default="false">Override chassis gyro on rough road</input_port>
             <input_port name="duration" type="std::chrono::milliseconds" default="">Publish then sleep duration in milliseconds</input_port>
+            <input_port name="rough_chassis_gyro" type="int" default="0">Chassis gyro value on rough road</input_port>
             <input_port name="topic_name" type="std::string" default="__default__placeholder__">Topic name</input_port>
         </Action>
         <Action ID="PublishTwist">
@@ -64,12 +105,71 @@
         <Control ID="RecoveryNode">
             <input_port name="num_attempts" type="int" default="999">Number of retries</input_port>
         </Control>
+        <Action ID="ResetSupplyRoute">
+            <output_port name="selected_supply_route" type="std::string">已选补给路线</output_port>
+            <output_port name="supply_route_locked" type="bool">补给路线锁定标志</output_port>
+        </Action>
+        <Action ID="RoughRoadSpeedControl">
+            <input_port name="patrol_mode" type="int" default="2">Patrol mode on rough road</input_port>
+            <input_port name="mode_topic" type="std::string" default="/mode_ctrl">Mode control topic</input_port>
+            <input_port name="power_mode" type="int" default="12">Power mode on rough road</input_port>
+            <input_port name="publish_mode_control" type="bool" default="true">Publish rough road mode override</input_port>
+            <input_port name="rough_chassis_gyro" type="int" default="0">Chassis gyro value on rough road</input_port>
+            <input_port name="control_speed" type="bool" default="true">Set Nav2 speed parameters</input_port>
+            <input_port name="controller_node" type="std::string" default="/controller_server">Nav2 controller server node</input_port>
+            <input_port name="smoother_node" type="std::string" default="/velocity_smoother">Nav2 velocity smoother node</input_port>
+            <input_port name="base_frame" type="std::string" default="base_footprint">Robot base frame</input_port>
+            <input_port name="map_frame" type="std::string" default="map">Map frame</input_port>
+            <output_port name="rough_road_active" type="bool">True when robot is inside rough road polygon</output_port>
+            <input_port name="normal_chassis_gyro" type="int" default="1">Chassis gyro value after rough road</input_port>
+            <input_port name="rough_road_polygon" type="std::string" default="">Rough road polygon x,y;x,y;...</input_port>
+        </Action>
+        <Action ID="SelectSupplyRouteByArea">
+            <inout_port name="supply_route_locked" type="bool" default="false">是否已锁定本次补给路线</inout_port>
+            <input_port name="u_inner_polygon" type="std::string" default="">U 字通道内部四边形顶点，格式 "x1,y1;x2,y2;x3,y3;x4,y4"</input_port>
+            <input_port name="our_half_polygon" type="std::string" default="">我方半场四边形顶点，格式 "x1,y1;x2,y2;x3,y3;x4,y4"</input_port>
+            <input_port name="highland_route" type="std::string" default="">中央高地对应的 CSV 路线文件</input_port>
+            <input_port name="u_inner_route" type="std::string" default="">U 字通道内部对应的 CSV 路线文件</input_port>
+            <input_port name="highland_polygon" type="std::string" default="">中央高地四边形顶点，格式 "x1,y1;x2,y2;x3,y3;x4,y4"</input_port>
+            <input_port name="our_half_route" type="std::string" default="">我方半场对应的 CSV 路线文件</input_port>
+            <inout_port name="selected_supply_route" type="std::string" default="">本次选定的路线文件路径</inout_port>
+            <input_port name="map_frame" type="std::string" default="map">地图坐标系</input_port>
+            <input_port name="base_frame" type="std::string" default="base_link">机器人底盘 TF 坐标系</input_port>
+        </Action>
         <Action ID="SendNav2Goal">
             <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
             <input_port name="action_name" type="std::string" default="">Action server name</input_port>
         </Action>
+        <Action ID="SentryPostureManager">
+            <input_port name="map_frame" type="std::string" default="map">Map frame</input_port>
+            <input_port name="enemy_outpost_hp" type="int" default="{@enemy_outpost_hp}">Enemy outpost HP</input_port>
+            <input_port name="linger_sec" type="double" default="2.000000">Posture condition linger time</input_port>
+            <input_port name="warning_hp_max" type="int" default="300">Upper bound of warning HP range</input_port>
+            <input_port name="topic_name" type="std::string" default="/sentry_posture_cmd">Posture command topic</input_port>
+            <input_port name="enemy_port" type="robot_msgs::msg::OmniPerception_&lt;std::allocator&lt;void&gt; &gt;" default="{@target_info}">OmniPerception target info on blackboard</input_port>
+            <input_port name="enemy_max_distance" type="double" default="8.000000">Max enemy distance for attack posture</input_port>
+            <input_port name="enemy_rx_time_sec" type="double" default="{@target_info_rx_time_sec}">Last receive time of target_info in ROS time seconds</input_port>
+            <input_port name="enemy_stale_timeout_sec" type="double" default="0.300000">Enemy message stale timeout</input_port>
+            <input_port name="decay_sec" type="double" default="180.000000">Posture decay threshold in seconds</input_port>
+            <input_port name="defense_hp_threshold" type="int" default="200">HP threshold for defense posture</input_port>
+            <input_port name="status_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
+            <input_port name="cooldown_sec" type="double" default="5.000000">Minimum seconds between posture switches</input_port>
+            <input_port name="damage_threshold" type="int" default="80">HP drop threshold in damage window</input_port>
+            <input_port name="budget_guard_sec" type="double" default="170.000000">Prefer moving posture after this posture usage</input_port>
+            <input_port name="base_frame" type="std::string" default="base_footprint">Robot base frame</input_port>
+            <input_port name="damage_window_sec" type="double" default="3.000000">HP drop detection window</input_port>
+            <input_port name="highland_polygon" type="std::string" default="{@highland_polygon}">Central highland polygon</input_port>
+            <input_port name="warning_hp_min" type="int" default="200">Lower bound of warning HP range</input_port>
+        </Action>
+        <Action ID="SetBlackboardBool">
+            <input_port name="set_to" type="bool" default="true">Value to write</input_port>
+            <output_port name="value" type="bool">Blackboard boolean value to write</output_port>
+        </Action>
         <Decorator ID="TickAfterTimeout">
             <input_port name="timeout" type="float">time in s to wait before ticking child again</input_port>
         </Decorator>
+        <Action ID="WaitDuration">
+            <input_port name="wait_sec" type="double" default="0.000000">等待时长（秒）。&lt;=0 时跳过等待直接返回 SUCCESS</input_port>
+        </Action>
     </TreeNodesModel>
 </root>

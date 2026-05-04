@@ -14,7 +14,7 @@ BT::NodeStatus IsGameStatusCondition::checkGameStart()
   int expected_game_progress;
   auto msg = getInput<robot_msgs::msg::CompetitionInfo>("key_port");
   if (!msg) {
-    RCLCPP_ERROR(logger_, "GameStatus message is not available");
+    RCLCPP_DEBUG(logger_, "GameStatus message is not available");
     return BT::NodeStatus::FAILURE;
   }
 

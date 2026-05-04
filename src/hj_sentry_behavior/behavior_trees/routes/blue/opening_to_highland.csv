@@ -1,0 +1,4 @@
+id,pose_x,pose_y,pose_z,rot_x,rot_y,rot_z,rot_w,command,
+# Replace this file with the real birth-to-highland route before running rmuc_2026.
+# The behavior tree retries this route until it succeeds; leaving this file as-is
+# blocks lower-priority behavior instead of sending the robot to an unsafe placeholder.

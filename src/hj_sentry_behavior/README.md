@@ -56,6 +56,26 @@ ros2 launch pb2025_sentry_behavior pb2025_sentry_behavior_launch.py
 
 ## 3. Behaviors
 
+### 3.0 RMUC 2026 Visual Trigger Input
+
+- `/target_info` 使用 `robot_msgs/msg/OmniPerception`，字段固定为 `header / state / armor_name / distance`。
+- 行为树当前只把它用于两件事：`engage_enemy` 的停车判定，以及 `manage_posture` 的进攻姿态判定。
+- `state=1` 表示主摄跟踪中，`armor_name` 与 `distance` 有效。
+- `state=2` 表示全向感知发现目标，只会触发 `EnemyStopGate` 停车，不会让 `SentryPostureManager` 认为敌人可见。
+- `armor_name=1..6` 且 `state=1` 且 `distance <= 8.0m` 时，`EnemyStopGate` 会停车并切入攻击链路。
+- `armor_name=7` 前哨、`armor_name=8` 基地只会让 `SentryPostureManager` 在 `state=1` 且距离有效时认为目标可见，不会触发停车。
+- 话题停更时继续沿用“最后一帧 + 超时失效”机制，不要求发布空消息清空。
+- 前哨站阶段切换仍然只看 `/competition_info.enemy_outpost_hp`，不由视觉输入直接驱动。
+
+### 3.0.1 RMUC 2026 Post-Outpost `hold_point`
+
+- `post_outpost_behavior_mode` 仍然只有 `default_patrol / hold_point / alt_patrol` 三种模式。
+- `hold_point` 模式现在细分为两个单点：
+  `enemy_outpost_gain_point` 和 `post_outpost_hold_goal`。
+- 当敌方前哨站已死亡后，如果 `our_outpost_hp > 0` 且 `stage_remain_time >= 120`，行为树会去 `enemy_outpost_gain_point`。
+- 否则 `hold_point` 仍保持原行为，继续占 `post_outpost_hold_goal`。
+- `stage_remain_time >= 120` 固定表示“开赛后前 5 分钟内”，不额外重复判断 `game_state`。
+
 ### 3.1 Action
 
 #### CalculateAttackPose
@@ -109,16 +129,6 @@ Parameters:
 以 `geometry_msgs/msg/pose_stamped` 的形式发布 Navigation2 目标点。
 
 ### 3.2 Condition
-
-#### IsAttacked
-
-通过 GlobalBlackboard 获取实时的 `pb_rm_interfaces::msg::RobotStatus` 类型数据，判断机器人是否受到攻击，并根据裁判系统装甲模块反馈的信息输出敌方可能的角度位置。该条件节点会根据输入端口的配置，检查以下几个条件：
-
-- `key_port`：从 GlobalBlackboard 获取 `RobotStatus` 消息
-- `gimbal_pitch`：输出固定的云台俯仰角度（0.0）
-- `gimbal_yaw`：输出敌方可能的角度位置
-
-如果检测到装甲板被击中，则返回 `SUCCESS`，并输出相应的云台角度；否则返回 `FAILURE`。
 
 #### IsDetectEnemy
 

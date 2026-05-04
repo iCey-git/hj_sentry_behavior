@@ -1,31 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   RMUC 2026 哨兵主行为树
-  ========================
-  策略层: SCURM 优先级框架
-    P0: check_game_start   — 比赛未开始则停车等待
-    P1: check_death        — 我方哨兵 HP==0, 死循环等待复活
-    P2: check_supply       — HP/弹药不足, 区域选路回补给
-    P3: protect_base       — 我方基地 HP 低, 去基地附近守护
-    P4: engage_enemy       — 检测到敌人, 停底盘交给自瞄
-    P5: pressure_outpost   — 敌方前哨站存活, 去打前哨站
-    P6: patrol_by_phase    — 按剩余时间前后期巡逻
+  策略层: 
+    check_game_start   — 比赛未开始则停车等待
+    check_death        — 我方哨兵 HP==0, 死循环等待复活
+    check_supply       — HP/弹药不足, 单点回补给
+    engage_enemy       — 检测到敌人, 停底盘交给自瞄
+    pressure_outpost   — 敌方前哨站存活, 单点压前哨
+    protect_base       — 我方基地 HP 低, 单点去基地附近守护
+    post_outpost_behavior — 前哨站死亡后, 按赛前配置执行行为
 
-  接口基线 (来自 test_spin_nav_aim.xml):
-    Nav2Pose: action_name="navigate_to_pose" goal_pose_topic="/goal_pose" goal="x;y;yaw"
-    PublishModeControl: chassis_gyro / patrol_mode / power_mode / duration / topic_name="/mode_ctrl"
-    IsGameStatus: expected_game_progress / key_port="{@referee_gameStatus}"
-    IsStatusOK: ammo_min / hp_min / hp_recover / key_port="{@referee_robotStatus}"
-    IsDetectEnemy: armor_id / max_distance / key_port="{@detector_armors}"
-
-  参数: 由 sentry_behavior.yaml 注入到黑板 (红蓝方切参数, 路线文件, 区域边界, 阈值)
 -->
 <root BTCPP_format="4">
 
-  <!-- ═══════════════════════════════════════════════
-       工具子树: 通用多点路线执行器
-       说明: 加载 CSV 路线后循环执行, 到达最后一个航点后退出
-       ═══════════════════════════════════════════════ -->
+  <!-- 工具子树: 多点路线执行器
+       加载 CSV 路线后逐点执行, 到达最后一个航点后返回 SUCCESS
+       目前没有启用多点导航 -->
   <BehaviorTree ID="run_route">
     <!-- 先加载路线, 再逐点执行 -->
     <SequenceWithMemory>
@@ -34,40 +24,123 @@
                      wait_times="{route_wait_times}"
                      total_waypoints="{route_total_wp}"
                      wp_idx="{route_wp_idx}"/>
-      <!-- KeepRunningUntilFailure: NextWaypoint 到头返回 FAILURE 则退出循环 -->
-      <KeepRunningUntilFailure>
-        <Sequence>
-          <GetCurrentWaypoint waypoints="{route_waypoints}"
-                              wait_times="{route_wait_times}"
-                              wp_idx="{route_wp_idx}"
-                              current_goal="{current_goal}"
-                              current_wait_sec="{current_wait_sec}"/>
-          <!-- 导航途中: 小陀螺 + 正常移动模式 -->
-          <PublishModeControl chassis_gyro="1"
-                              patrol_mode="2"
-                              power_mode="12"
-                              duration="0"
-                              topic_name="/mode_ctrl"/>
-          <!-- ForceSuccess: 导航失败也继续往下走 (切到下个航点) -->
-          <ForceSuccess>
-            <Nav2Pose action_name="navigate_to_pose"
-                      goal_pose_topic="/goal_pose"
-                      goal="{current_goal}"/>
-          </ForceSuccess>
-          <!-- 到达航点后等待 wait_sec -->
-          <WaitDuration wait_sec="{current_wait_sec}"/>
-          <!-- 推进到下一航点; 到尾则重置 idx 并返回 FAILURE -->
-          <NextWaypoint wp_idx="{route_wp_idx}"
-                        total_waypoints="{route_total_wp}"/>
-        </Sequence>
-      </KeepRunningUntilFailure>
+      <!-- NextWaypoint 到尾时返回 FAILURE; 这里把它视为路线正常完成。 -->
+      <ForceSuccess>
+        <KeepRunningUntilFailure>
+          <Sequence>
+            <GetCurrentWaypoint waypoints="{route_waypoints}"
+                                wait_times="{route_wait_times}"
+                                wp_idx="{route_wp_idx}"
+                                current_goal="{current_goal}"
+                                current_wait_sec="{current_wait_sec}"/>
+            <!-- 导航途中: 小陀螺 + 正常移动模式 -->
+            <PublishModeControl chassis_gyro="1"
+                                patrol_mode="2"
+                                power_mode="12"
+                                rough_road_active="{@rough_road_active}"
+                                rough_chassis_gyro="0"
+                                duration="0"
+                                topic_name="/mode_ctrl"/>
+            <RoughRoadSpeedControl rough_road_polygon="{@rough_road_polygon}"
+                                   control_speed="false"
+                                   publish_mode_control="true"
+                                   map_frame="map"
+                                   base_frame="base_footprint"/>
+            <!-- 当前多点实现是逐点 NavigateToPose，不是 ThroughPoses。 -->
+            <ForceSuccess>
+              <Nav2Pose action_name="navigate_to_pose"
+                        goal_pose_topic="/goal_pose"
+                        goal="{current_goal}"/>
+            </ForceSuccess>
+            <!-- 到达航点后等待 wait_sec -->
+            <WaitDuration wait_sec="{current_wait_sec}"/>
+            <!-- 推进到下一航点; 到尾则重置 idx 并返回 FAILURE -->
+            <NextWaypoint wp_idx="{route_wp_idx}"
+                          total_waypoints="{route_total_wp}"/>
+          </Sequence>
+        </KeepRunningUntilFailure>
+      </ForceSuccess>
     </SequenceWithMemory>
   </BehaviorTree>
 
-  <!-- ═══════════════════════════════════════════════
-       P0: 比赛开始判定
-       说明: 未开始则停车等待 (与 test_spin_nav_aim.xml 完全一致)
-       ═══════════════════════════════════════════════ -->
+  <!-- 单点导航 用 Nav2Pose 接口 -->
+  <BehaviorTree ID="navigate_single_goal">
+    <Sequence>
+      <PublishModeControl chassis_gyro="1"
+                          patrol_mode="2"
+                          power_mode="12"
+                          rough_road_active="{@rough_road_active}"
+                          rough_chassis_gyro="0"
+                          duration="0"
+                          topic_name="/mode_ctrl"/>
+      <RoughRoadSpeedControl rough_road_polygon="{@rough_road_polygon}"
+                             control_speed="false"
+                             publish_mode_control="true"
+                             map_frame="map"
+                             base_frame="base_footprint"/>
+      <ForceSuccess>
+        <Nav2Pose action_name="navigate_to_pose"
+                  goal_pose_topic="/goal_pose"
+                  goal="{single_goal}"/>
+      </ForceSuccess>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- 到达单点后定期重发目标，保持姿态和位置纠偏 -->
+  <BehaviorTree ID="hold_single_goal">
+    <Sequence>
+      <SubTree ID="navigate_single_goal" single_goal="{single_goal}"/>
+      <KeepRunningUntilFailure>
+        <Sequence>
+          <PublishModeControl chassis_gyro="2"
+                              patrol_mode="2"
+                              power_mode="12"
+                              rough_road_active="{@rough_road_active}"
+                              rough_chassis_gyro="0"
+                              duration="0"
+                              topic_name="/mode_ctrl"/>
+          <RoughRoadSpeedControl rough_road_polygon="{@rough_road_polygon}"
+                                 control_speed="false"
+                                 publish_mode_control="true"
+                                 map_frame="map"
+                                 base_frame="base_footprint"/>
+          <ForceSuccess>
+            <TickAfterTimeout timeout="{@single_goal_refresh_sec}">
+              <Nav2Pose action_name="navigate_to_pose"
+                        goal_pose_topic="/goal_pose"
+                        goal="{single_goal}"/>
+            </TickAfterTimeout>
+          </ForceSuccess>
+        </Sequence>
+      </KeepRunningUntilFailure>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- 巡逻点切换不应被 Nav2 的偶发 aborted 卡死。
+       这里等待导航结束，但不强制要求SUCCESS，结束后直接切下一个巡逻点。 -->
+  <BehaviorTree ID="navigate_patrol_goal">
+    <Sequence>
+      <PublishModeControl chassis_gyro="1"
+                          patrol_mode="2"
+                          power_mode="12"
+                          rough_road_active="{@rough_road_active}"
+                          rough_chassis_gyro="0"
+                          duration="0"
+                          topic_name="/mode_ctrl"/>
+      <RoughRoadSpeedControl rough_road_polygon="{@rough_road_polygon}"
+                             control_speed="false"
+                             publish_mode_control="true"
+                             map_frame="map"
+                             base_frame="base_footprint"/>
+      <ForceSuccess>
+        <Nav2Pose action_name="navigate_to_pose"
+                  goal_pose_topic="/goal_pose"
+                  goal="{single_goal}"/>
+      </ForceSuccess>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- 比赛开始判定 未开始则停车等待 -->
   <BehaviorTree ID="check_game_start">
     <Fallback>
       <IsGameStatus name="IsGameStart"
@@ -90,13 +163,9 @@
     </Fallback>
   </BehaviorTree>
 
-  <!-- ═══════════════════════════════════════════════
-       P1: 死亡处理
-       说明: HP==0 时死循环等待复活, 期间发停车指令
-       用法: _while 前置条件, our_sentry_hp==0 时持续触发
-       ═══════════════════════════════════════════════ -->
+  <!-- 哨兵死亡 死循环等待复活, 期间发停车指令 -->
   <BehaviorTree ID="check_death">
-    <Sequence _while="our_sentry_hp==0">
+    <Sequence _while="@our_sentry_hp==0">
       <PublishModeControl chassis_gyro="0"
                           patrol_mode="255"
                           power_mode="12"
@@ -107,185 +176,169 @@
                     v_x="0.0"
                     duration="0"
                     topic_name="cmd_vel"/>
-      <!-- 死循环: 一直 RUNNING 等待复活 -->
-      <AlwaysRunning/>
+      <!-- BT.CPP 4.6 has no AlwaysRunning node; this keeps returning RUNNING. -->
+      <KeepRunningUntilFailure>
+        <AlwaysSuccess/>
+      </KeepRunningUntilFailure>
     </Sequence>
   </BehaviorTree>
 
-  <!-- ═══════════════════════════════════════════════
-       P2: 补给逻辑
-       说明:
-         1. IsStatusOK 返回 FAILURE 表示需要补给
-         2. SelectSupplyRouteByArea 按位置选路线 (锁定本次补给路线)
-         3. 沿选定路线走到补给区
-         4. 等待补给完成 (IsStatusOK 返回 SUCCESS 且锁解除)
-       _while 条件: 补给条件满足 OR 锁定中
-       ═══════════════════════════════════════════════ -->
-  <BehaviorTree ID="reset_supply_route">
-    <ResetSupplyRoute selected_supply_route="{selected_supply_route}"
-                      supply_route_locked="{supply_route_locked}"/>
+  <!-- 回家补给逻辑 根据 IsStatusOK 的返回值判断 -->
+  <BehaviorTree ID="check_supply">
+    <!-- ReactiveSequence: 每次 tick 都先重查状态，低血/低弹立即切回家，恢复后立即退出补给。 -->
+    <ReactiveSequence>
+      <Inverter>
+        <IsStatusOK ammo_min="{@supply_ammo_min}"
+                    hp_min="{@supply_hp_min}"
+                    hp_recover="{@supply_hp_recover}"
+                    key_port="{@referee_robotStatus}"/>
+      </Inverter>
+      <!-- 低血/低弹时持续占据补给点；状态恢复后上一条件失效，本子树会被立即中断。 -->
+      <SubTree ID="hold_single_goal" single_goal="{@supply_goal}"/>
+    </ReactiveSequence>
   </BehaviorTree>
 
-  <BehaviorTree ID="check_supply">
-    <!-- Inverter: IsStatusOK==SUCCESS → Inverter→FAILURE, 不需补给则跳过 -->
+  <!--  保卫基地模式 -->
+  <BehaviorTree ID="protect_base">
+    <Sequence _while="@our_base_hp&lt;@base_protect_hp_threshold">
+      <SubTree ID="hold_single_goal" single_goal="{@base_protect_goal}"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- 发现敌人分支 -->
+  <BehaviorTree ID="engage_enemy">
+    <EnemyStopGate max_distance="8.0"
+                   stale_timeout_sec="0.3"
+                   linger_sec="0.8"
+                   key_port="{@target_info}"
+                   rx_time_sec="{@target_info_rx_time_sec}"
+                   rough_road_active="{@rough_road_active}"
+                   rough_chassis_gyro="0"/>
+  </BehaviorTree>
+
+  <!-- 姿态管理：/sentry_posture_cmd, 1=进攻, 2=防御, 3=移动 -->
+  <BehaviorTree ID="manage_posture">
+    <SentryPostureManager topic_name="/sentry_posture_cmd"
+                          status_port="{@referee_robotStatus}"
+                          enemy_port="{@target_info}"
+                          enemy_rx_time_sec="{@target_info_rx_time_sec}"
+                          enemy_max_distance="{@posture_enemy_max_distance}"
+                          enemy_stale_timeout_sec="{@posture_enemy_stale_timeout_sec}"
+                          cooldown_sec="{@posture_cooldown_sec}"
+                          decay_sec="{@posture_decay_sec}"
+                          budget_guard_sec="{@posture_budget_guard_sec}"
+                          damage_window_sec="{@posture_damage_window_sec}"
+                          damage_threshold="{@posture_damage_threshold}"
+                          defense_hp_threshold="{@posture_defense_hp_threshold}"
+                          warning_hp_min="{@posture_warning_hp_min}"
+                          warning_hp_max="{@posture_warning_hp_max}"
+                          enemy_outpost_hp="{@enemy_outpost_hp}"
+                          highland_polygon="{@highland_polygon}"
+                          map_frame="map"
+                          base_frame="base_footprint"
+                          linger_sec="{@posture_linger_sec}"/>
+  </BehaviorTree>
+
+  <!-- 压前哨 -->
+  <BehaviorTree ID="pressure_outpost">
+    <Sequence _while="@enemy_outpost_hp&gt;0">
+      <SubTree ID="hold_single_goal" single_goal="{@outpost_pressure_goal}"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- 默认的高地双点巡逻 -->
+  <BehaviorTree ID="patrol_by_phase">
+    <KeepRunningUntilFailure>
+      <Sequence>
+        <SubTree ID="navigate_patrol_goal" single_goal="{@patrol_point_a_goal}"/>
+        <SubTree ID="navigate_patrol_goal" single_goal="{@patrol_point_b_goal}"/>
+      </Sequence>
+    </KeepRunningUntilFailure>
+  </BehaviorTree>
+
+  <!-- 前哨站击杀后 默认占点保持 -->
+  <BehaviorTree ID="post_outpost_hold">
+    <SubTree ID="hold_single_goal" single_goal="{@post_outpost_hold_goal}"/>
+  </BehaviorTree>
+
+  <!-- 前哨站击杀后 hold_point 模式的前 5 分钟抢占点 占领敌方增益区 -->
+  <BehaviorTree ID="post_outpost_gain">
+    <SubTree ID="hold_single_goal" single_goal="{@enemy_outpost_gain_point}"/>
+  </BehaviorTree>
+
+  <!-- 前哨站击杀后 备用双点巡逻 -->
+  <BehaviorTree ID="post_outpost_alt_patrol">
+    <KeepRunningUntilFailure>
+      <Sequence>
+        <SubTree ID="navigate_patrol_goal" single_goal="{@post_outpost_alt_point_a_goal}"/>
+        <SubTree ID="navigate_patrol_goal" single_goal="{@post_outpost_alt_point_b_goal}"/>
+      </Sequence>
+    </KeepRunningUntilFailure>
+  </BehaviorTree>
+
+  <!-- 前哨站击杀后行为选择 -->
+  <BehaviorTree ID="post_outpost_behavior">
     <Fallback>
-      <SequenceWithMemory>
-        <Inverter>
-          <IsStatusOK ammo_min="{supply_ammo_min}"
-                      hp_min="{supply_hp_min}"
-                      hp_recover="{supply_hp_recover}"
-                      key_port="{@referee_robotStatus}"/>
-        </Inverter>
-        <!-- 按区域选补给路线 (已锁定则复用本次路线) -->
-        <SelectSupplyRouteByArea base_frame="base_link"
-                                 map_frame="map"
-                                 our_half_route="{supply_our_half_route}"
-                                 u_inner_route="{supply_u_inner_route}"
-                                 highland_route="{supply_highland_route}"
-                                 our_half_polygon="{supply_our_half_polygon}"
-                                 u_inner_polygon="{supply_u_inner_polygon}"
-                                 highland_polygon="{supply_highland_polygon}"
-                                 supply_route_locked="{supply_route_locked}"
-                                 selected_supply_route="{selected_supply_route}"/>
-        <!-- 沿选定路线前往补给区 -->
-        <SubTree ID="run_route" route_file="{selected_supply_route}"
-                               route_waypoints="{route_waypoints}"
-                               route_wait_times="{route_wait_times}"
-                               route_total_wp="{route_total_wp}"
-                               route_wp_idx="{route_wp_idx}"
-                               current_goal="{current_goal}"
-                               current_wait_sec="{current_wait_sec}"/>
-        <!-- 到达补给点后停在原地，直到血量和弹量恢复 -->
-        <RetryUntilSuccessful num_attempts="1000000">
-          <IsStatusOK ammo_min="{supply_ammo_min}"
-                      hp_min="{supply_hp_min}"
-                      hp_recover="{supply_hp_recover}"
-                      key_port="{@referee_robotStatus}"/>
-        </RetryUntilSuccessful>
-      </SequenceWithMemory>
-      <ForceFailure>
-        <SubTree ID="reset_supply_route"/>
-      </ForceFailure>
+      <Sequence>
+        <IsBlackboardString value="{@post_outpost_behavior_mode}"
+                           expected="hold_point"/>
+        <Fallback>
+          <Sequence _while="@our_outpost_hp&gt;0 &amp;&amp; @stage_remain_time&gt;=120">
+            <SubTree ID="post_outpost_gain"/>
+          </Sequence>
+          <SubTree ID="post_outpost_hold"/>
+        </Fallback>
+      </Sequence>
+      <Sequence>
+        <IsBlackboardString value="{@post_outpost_behavior_mode}"
+                           expected="alt_patrol"/>
+        <SubTree ID="post_outpost_alt_patrol"/>
+      </Sequence>
+      <SubTree ID="patrol_by_phase"/>
     </Fallback>
   </BehaviorTree>
 
-  <!-- ═══════════════════════════════════════════════
-       P3: 保卫基地
-       说明: 我方基地 HP 低于阈值时, 去基地附近走防守路线
-       _while 条件: our_base_hp < threshold
-       ═══════════════════════════════════════════════ -->
-  <BehaviorTree ID="protect_base">
-    <Sequence _while="our_base_hp&lt;base_protect_hp_threshold">
-      <SubTree ID="run_route" route_file="{base_protect_route}"
-                             route_waypoints="{route_waypoints}"
-                             route_wait_times="{route_wait_times}"
-                             route_total_wp="{route_total_wp}"
-                             route_wp_idx="{route_wp_idx}"
-                             current_goal="{current_goal}"
-                             current_wait_sec="{current_wait_sec}"/>
-    </Sequence>
-  </BehaviorTree>
-
-  <!-- ═══════════════════════════════════════════════
-       P4: 敌情响应 (与 test_spin_nav_aim.xml 完全一致)
-       说明: 检测到敌人则停底盘, 交给自瞄打
-       ═══════════════════════════════════════════════ -->
-  <BehaviorTree ID="engage_enemy">
-    <Sequence>
-      <IsDetectEnemy armor_id="1;2;3;4;5;7"
-                     max_distance="8.0"
-                     key_port="{@detector_armors}"/>
-      <PublishModeControl chassis_gyro="1"
-                          patrol_mode="255"
-                          power_mode="12"
-                          duration="0"
-                          topic_name="/mode_ctrl"/>
-      <PublishTwist v_y="0.0"
-                    v_yaw="0.0"
-                    v_x="0.0"
-                    duration="0"
-                    topic_name="cmd_vel"/>
-    </Sequence>
-  </BehaviorTree>
-
-  <!-- ═══════════════════════════════════════════════
-       P5: 施压前哨站
-       说明: 敌方前哨站存活时, 去前哨站附近多点路线骚扰
-       _while 条件: enemy_outpost_hp > 0
-       ═══════════════════════════════════════════════ -->
-  <BehaviorTree ID="pressure_outpost">
-    <Sequence _while="enemy_outpost_hp&gt;0">
-      <SubTree ID="run_route" route_file="{outpost_pressure_route}"
-                             route_waypoints="{route_waypoints}"
-                             route_wait_times="{route_wait_times}"
-                             route_total_wp="{route_total_wp}"
-                             route_wp_idx="{route_wp_idx}"
-                             current_goal="{current_goal}"
-                             current_wait_sec="{current_wait_sec}"/>
-    </Sequence>
-  </BehaviorTree>
-
-  <!-- ═══════════════════════════════════════════════
-       P6: 按阶段巡逻
-       说明:
-         前期 (stage_remain_time > patrol_phase_threshold): 走前期巡逻路线
-         后期 (stage_remain_time <= patrol_phase_threshold): 走后期巡逻路线
-       ═══════════════════════════════════════════════ -->
-  <BehaviorTree ID="patrol_by_phase">
-    <ReactiveFallback>
-      <!-- 前期: stage_remain_time 大于阈值时走前期路线 -->
-      <Sequence _while="stage_remain_time&gt;patrol_phase_threshold">
-        <SubTree ID="run_route" route_file="{patrol_early_route}"
-                               route_waypoints="{route_waypoints}"
-                               route_wait_times="{route_wait_times}"
-                               route_total_wp="{route_total_wp}"
-                               route_wp_idx="{route_wp_idx}"
-                               current_goal="{current_goal}"
-                               current_wait_sec="{current_wait_sec}"/>
-      </Sequence>
-      <!-- 后期: 走后期收缩路线 -->
-      <SubTree ID="run_route" route_file="{patrol_late_route}"
-                             route_waypoints="{route_waypoints}"
-                             route_wait_times="{route_wait_times}"
-                             route_total_wp="{route_total_wp}"
-                             route_wp_idx="{route_wp_idx}"
-                             current_goal="{current_goal}"
-                             current_wait_sec="{current_wait_sec}"/>
-    </ReactiveFallback>
-  </BehaviorTree>
-
-  <!-- ═══════════════════════════════════════════════
-       主树: rmuc_2026
-       结构: 比赛开始门控 → ReactiveFallback 7优先级
-       ═══════════════════════════════════════════════ -->
+  <!-- 主树: rmuc_2026  -->
   <BehaviorTree ID="rmuc_2026">
     <!-- 外层死循环, ForceSuccess 防止任何节点的 FAILURE 传播出来终止树 -->
     <KeepRunningUntilFailure>
       <ForceSuccess>
         <ReactiveSequence>
-          <!-- P0: 比赛开始门控 -->
+          <!--  比赛开始 -->
           <SubTree ID="check_game_start"/>
+          <SubTree ID="manage_posture"/>
+          <RoughRoadSpeedControl rough_road_polygon="{@rough_road_polygon}"
+                                 rough_road_active="{@rough_road_active}"
+                                 publish_mode_control="true"
+                                 mode_topic="/mode_ctrl"
+                                 rough_chassis_gyro="0"
+                                 normal_chassis_gyro="1"
+                                 patrol_mode="2"
+                                 power_mode="12"
+                                 control_speed="true"
+                                 map_frame="map"
+                                 base_frame="base_footprint"/>
 
-          <!-- P1-P6: 策略优先级 (ReactiveFallback: 每 tick 重新评估) -->
+          <!--  策略优先级  -->
           <ReactiveFallback>
 
-            <!-- P1: 死亡 (HP==0, 最高优先级) -->
+            <!-- P1: 死亡  -->
             <SubTree ID="check_death"/>
 
-            <!-- P2: 补给 (HP/弹药不足) -->
+            <!-- P2: 补给  -->
             <SubTree ID="check_supply"/>
 
-            <!-- P3: 保卫基地 -->
-            <SubTree ID="protect_base"/>
-
-            <!-- P4: 敌情响应 (检测到敌人则停车自瞄) -->
+            <!-- P3: 敌情响应  -->
             <SubTree ID="engage_enemy"/>
 
-            <!-- P5: 施压前哨站 -->
+            <!-- P4: 压前哨 -->
             <SubTree ID="pressure_outpost"/>
 
-            <!-- P6: 按阶段巡逻 (兜底) -->
-            <SubTree ID="patrol_by_phase"/>
+            <!-- P5: 保卫基地 -->
+            <SubTree ID="protect_base"/>
+
+            <!-- P6: 前哨站击杀后行为  -->
+            <SubTree ID="post_outpost_behavior"/>
 
           </ReactiveFallback>
         </ReactiveSequence>
@@ -293,9 +346,7 @@
     </KeepRunningUntilFailure>
   </BehaviorTree>
 
-  <!-- ═══════════════════════════════════════════════
-       节点模型 (Groot2 可视化用)
-       ═══════════════════════════════════════════════ -->
+  <!--  节点模型，主要用于 Groot2 可视化 -->
   <TreeNodesModel>
     <!-- Conditions -->
     <Condition ID="IsGameStatus">
@@ -317,6 +368,20 @@
       <input_port name="key_port" default="{@detector_armors}"
                   type="auto_aim_interfaces::msg::Armors_&lt;std::allocator&lt;void&gt; &gt;">Vision detector port on blackboard</input_port>
     </Condition>
+    <Condition ID="EnemyStopGate">
+      <input_port name="max_distance" default="8.000000" type="float">Distance to enemy target</input_port>
+      <input_port name="stale_timeout_sec" default="0.300000" type="double">Treat stale target messages as no enemy</input_port>
+      <input_port name="linger_sec" default="0.800000" type="double">Keep stop state after last valid enemy</input_port>
+      <input_port name="key_port" default="{@target_info}"
+                  type="robot_msgs::msg::OmniPerception_&lt;std::allocator&lt;void&gt; &gt;">OmniPerception target info on blackboard</input_port>
+      <input_port name="rx_time_sec" default="{@target_info_rx_time_sec}" type="double">Last target_info receive time in ROS time seconds</input_port>
+      <input_port name="rough_road_active" default="false" type="bool">Override chassis gyro on rough road</input_port>
+      <input_port name="rough_chassis_gyro" default="0" type="int">Chassis gyro value on rough road</input_port>
+    </Condition>
+    <Condition ID="IsBlackboardString">
+      <input_port name="value" default="" type="std::string">Blackboard string value</input_port>
+      <input_port name="expected" default="" type="std::string">Expected string value</input_port>
+    </Condition>
     <!-- Actions -->
     <Action ID="Nav2Pose">
       <input_port name="goal" default="0;0;0"
@@ -328,8 +393,48 @@
       <input_port name="chassis_gyro" default="0" type="int">0: off, 1: on, 2: alignment correction</input_port>
       <input_port name="patrol_mode" default="2" type="int">Patrol mode (2=normal, 255=relax)</input_port>
       <input_port name="power_mode" default="12" type="int">Power mode (12=charge)</input_port>
+      <input_port name="rough_road_active" default="false" type="bool">Override chassis gyro on rough road</input_port>
+      <input_port name="rough_chassis_gyro" default="0" type="int">Chassis gyro value on rough road</input_port>
       <input_port name="duration" default="0" type="int">Duration in ms</input_port>
       <input_port name="topic_name" default="/mode_ctrl" type="std::string">Topic name</input_port>
+    </Action>
+    <Action ID="RoughRoadSpeedControl">
+      <input_port name="rough_road_polygon" default="{@rough_road_polygon}" type="std::string">Rough road polygon</input_port>
+      <input_port name="map_frame" default="map" type="std::string">Map frame</input_port>
+      <input_port name="base_frame" default="base_footprint" type="std::string">Robot base frame</input_port>
+      <input_port name="controller_node" default="/controller_server" type="std::string">Nav2 controller server node</input_port>
+      <input_port name="smoother_node" default="/velocity_smoother" type="std::string">Nav2 velocity smoother node</input_port>
+      <input_port name="control_speed" default="true" type="bool">Set Nav2 speed parameters</input_port>
+      <input_port name="publish_mode_control" default="true" type="bool">Publish rough road mode override</input_port>
+      <input_port name="mode_topic" default="/mode_ctrl" type="std::string">Mode control topic</input_port>
+      <input_port name="rough_chassis_gyro" default="0" type="int">Chassis gyro value on rough road</input_port>
+      <input_port name="normal_chassis_gyro" default="1" type="int">Chassis gyro value after rough road</input_port>
+      <input_port name="patrol_mode" default="2" type="int">Patrol mode on rough road</input_port>
+      <input_port name="power_mode" default="12" type="int">Power mode on rough road</input_port>
+      <output_port name="rough_road_active" type="bool">True when robot is inside rough road polygon</output_port>
+    </Action>
+    <Action ID="SentryPostureManager">
+      <input_port name="topic_name" default="/sentry_posture_cmd" type="std::string">Posture command topic</input_port>
+      <input_port name="status_port" default="{@referee_robotStatus}"
+                  type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;">CompetitionInfo port on blackboard</input_port>
+      <input_port name="enemy_port" default="{@target_info}"
+                  type="robot_msgs::msg::OmniPerception_&lt;std::allocator&lt;void&gt; &gt;">OmniPerception target info on blackboard</input_port>
+      <input_port name="enemy_rx_time_sec" default="{@target_info_rx_time_sec}" type="double">Last receive time of target_info</input_port>
+      <input_port name="enemy_max_distance" default="8.0" type="double">Max enemy distance for attack posture</input_port>
+      <input_port name="enemy_stale_timeout_sec" default="0.3" type="double">Enemy message stale timeout</input_port>
+      <input_port name="cooldown_sec" default="5.0" type="double">Minimum seconds between posture switches</input_port>
+      <input_port name="decay_sec" default="180.0" type="double">Posture decay threshold in seconds</input_port>
+      <input_port name="budget_guard_sec" default="170.0" type="double">Prefer moving posture after this posture usage</input_port>
+      <input_port name="damage_window_sec" default="3.0" type="double">HP drop detection window</input_port>
+      <input_port name="damage_threshold" default="80" type="int">HP drop threshold in damage window</input_port>
+      <input_port name="defense_hp_threshold" default="200" type="int">HP threshold for defense posture</input_port>
+      <input_port name="warning_hp_min" default="200" type="int">Lower bound of warning HP range</input_port>
+      <input_port name="warning_hp_max" default="300" type="int">Upper bound of warning HP range</input_port>
+      <input_port name="enemy_outpost_hp" default="{@enemy_outpost_hp}" type="int">Enemy outpost HP</input_port>
+      <input_port name="highland_polygon" default="{@highland_polygon}" type="std::string">Central highland polygon</input_port>
+      <input_port name="map_frame" default="map" type="std::string">Map frame</input_port>
+      <input_port name="base_frame" default="base_footprint" type="std::string">Robot base frame</input_port>
+      <input_port name="linger_sec" default="2.0" type="double">Posture condition linger time</input_port>
     </Action>
     <Action ID="PublishTwist">
       <input_port name="v_x" default="0.000000" type="double">Linear X velocity (m/s)</input_port>
@@ -364,30 +469,10 @@
       <input_port name="total_waypoints" default="{route_total_wp}" type="int">航点总数</input_port>
       <inout_port name="wp_idx" default="{route_wp_idx}" type="int">当前航点索引</inout_port>
     </Action>
-    <Action ID="SelectSupplyRouteByArea">
-      <input_port name="base_frame" default="base_link" type="std::string">机器人底盘 TF 坐标系</input_port>
-      <input_port name="map_frame" default="map" type="std::string">地图坐标系</input_port>
-      <input_port name="our_half_route" default="" type="std::string">我方半场 CSV 路线文件</input_port>
-      <input_port name="u_inner_route" default="" type="std::string">U 字通道内部 CSV 路线文件</input_port>
-      <input_port name="highland_route" default="" type="std::string">中央高地 CSV 路线文件</input_port>
-      <input_port name="our_half_polygon" default="" type="std::string">我方半场四边形顶点</input_port>
-      <input_port name="u_inner_polygon" default="" type="std::string">U 字通道四边形顶点</input_port>
-      <input_port name="highland_polygon" default="" type="std::string">中央高地四边形顶点</input_port>
-      <inout_port name="supply_route_locked" default="{supply_route_locked}" type="bool">是否已锁定路线</inout_port>
-      <inout_port name="selected_supply_route" default="{selected_supply_route}" type="std::string">选定的路线文件</inout_port>
-    </Action>
-    <Action ID="ResetSupplyRoute">
-      <output_port name="supply_route_locked" default="{supply_route_locked}" type="bool">锁定标志写回</output_port>
-      <output_port name="selected_supply_route" default="{selected_supply_route}" type="std::string">选定的路线文件</output_port>
-    </Action>
     <!-- Decorators -->
     <Decorator ID="TickAfterTimeout">
       <input_port name="timeout" type="float">time in s to wait before ticking child again</input_port>
     </Decorator>
-    <!-- Controls -->
-    <Control ID="RecoveryNode">
-      <input_port name="num_attempts" default="999" type="int">Number of retries</input_port>
-    </Control>
   </TreeNodesModel>
 
 </root>

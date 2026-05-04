@@ -48,9 +48,18 @@ list(APPEND plugin_libs is_status_ok)
 ament_auto_add_library(is_detect_enemy SHARED plugins/condition/is_detect_enemy.cpp)
 list(APPEND plugin_libs is_detect_enemy)
 
+ament_auto_add_library(enemy_stop_gate SHARED plugins/condition/enemy_stop_gate.cpp)
+list(APPEND plugin_libs enemy_stop_gate)
+
+ament_auto_add_library(is_blackboard_string SHARED plugins/condition/is_blackboard_string.cpp)
+list(APPEND plugin_libs is_blackboard_string)
+
 ####### Actions #######
 ament_auto_add_library(nav2_pose SHARED plugins/action/nav2_pose.cpp)
 list(APPEND plugin_libs nav2_pose)
+
+ament_auto_add_library(nav2_through_poses SHARED plugins/action/nav2_through_poses.cpp)
+list(APPEND plugin_libs nav2_through_poses)
 
 ament_auto_add_library(send_nav2_goal SHARED plugins/action/send_nav2_goal.cpp)
 list(APPEND plugin_libs send_nav2_goal)
@@ -60,6 +69,12 @@ list(APPEND plugin_libs pub_nav2_goal)
 
 ament_auto_add_library(pub_mode_control SHARED plugins/action/pub_mode_control.cpp)
 list(APPEND plugin_libs pub_mode_control)
+
+ament_auto_add_library(rough_road_speed_control SHARED plugins/action/rough_road_speed_control.cpp)
+list(APPEND plugin_libs rough_road_speed_control)
+
+ament_auto_add_library(sentry_posture_manager SHARED plugins/action/sentry_posture_manager.cpp)
+list(APPEND plugin_libs sentry_posture_manager)
 
 ament_auto_add_library(pub_twist SHARED plugins/action/pub_twist.cpp)
 list(APPEND plugin_libs pub_twist)
@@ -85,14 +100,7 @@ list(APPEND plugin_libs select_supply_route_by_area)
 ament_auto_add_library(reset_supply_route SHARED plugins/action/reset_supply_route.cpp)
 list(APPEND plugin_libs reset_supply_route)
 
-####### Controls #######
-ament_auto_add_library(recovery_node SHARED plugins/control/recovery_node.cpp)
-list(APPEND plugin_libs recovery_node)
-
 ####### Decorators #######
-ament_auto_add_library(rate_controller SHARED plugins/decorator/rate_controller.cpp)
-list(APPEND plugin_libs rate_controller)
-
 ament_auto_add_library(tick_after_timeout_node SHARED plugins/decorator/tick_after_timeout_node.cpp)
 list(APPEND plugin_libs tick_after_timeout_node)
 
@@ -107,11 +115,16 @@ endforeach()
 if(BUILD_TESTING)
   set(ament_cmake_clang_format_CONFIG_FILE "${CMAKE_SOURCE_DIR}/.clang-format")
   find_package(ament_lint_auto REQUIRED)
+  find_package(ament_cmake_gtest REQUIRED)
   list(APPEND AMENT_LINT_AUTO_EXCLUDE
     ament_cmake_uncrustify
     ament_cmake_flake8
   )
   ament_lint_auto_find_test_dependencies()
+
+  ament_add_gtest(test_omni_perception_utils test/test_omni_perception_utils.cpp)
+  target_include_directories(test_omni_perception_utils PRIVATE include)
+  ament_target_dependencies(test_omni_perception_utils robot_msgs)
 endif()
 
 #############
@@ -122,6 +135,8 @@ endif()
 install(PROGRAMS
   scripts/fake_referee.py
   scripts/fake_referee_bad_status.py
+  scripts/fake_referee_scenarios.py
+  scripts/polygon_editor.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

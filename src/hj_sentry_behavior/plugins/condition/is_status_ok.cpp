@@ -24,7 +24,7 @@ BT::NodeStatus IsStatusOKCondition::checkRobotStatus()
   const int hp = msg->our_sentry_hp;
   const bool is_ammo_ok = (msg->remain_bullet >= ammo_min);
 
-  // 滞回逻辑：hp <= hp_min 触发回家，hp >= hp_recover 恢复正常
+  // hp <= hp_min 触发回家，hp >= hp_recover 恢复正常
   if (!is_retreating_ && hp <= hp_min) {
     is_retreating_ = true;
   } else if (is_retreating_ && hp >= hp_recover) {
@@ -43,7 +43,7 @@ BT::PortsList IsStatusOKCondition::providedPorts()
     BT::InputPort<int>("hp_recover", 600, "HP threshold to stop retreat (full HP)"),
     BT::InputPort<int>("ammo_min", 0, "Lower then minimum ammo will return FAILURE")};
 }
-}  // namespace pb2025_sentry_behavior
+}  
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory)

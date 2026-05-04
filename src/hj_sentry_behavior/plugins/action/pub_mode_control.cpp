@@ -24,7 +24,9 @@ BT::PortsList PublishModeControlAction::providedPorts()
   return providedBasicPorts(
     {BT::InputPort<int>("chassis_gyro", 0, "0: off, 1: on, 2: alignment correction"),
      BT::InputPort<int>("patrol_mode", 2, "Patrol mode (e.g. 2=normal, 255=relax)"),
-     BT::InputPort<int>("power_mode", 12, "Power mode (e.g. 12=charge, 13=boost)")});
+     BT::InputPort<int>("power_mode", 12, "Power mode (e.g. 12=charge, 13=boost)"),
+     BT::InputPort<bool>("rough_road_active", false, "Override chassis gyro on rough road"),
+     BT::InputPort<int>("rough_chassis_gyro", 0, "Chassis gyro value on rough road")});
 }
 
 bool PublishModeControlAction::setMessage(robot_msgs::msg::ModeControl & msg)
@@ -32,10 +34,17 @@ bool PublishModeControlAction::setMessage(robot_msgs::msg::ModeControl & msg)
   int chassis_gyro = 0;
   int patrol_mode = 0;
   int power_mode = 0;
+  bool rough_road_active = false;
+  int rough_chassis_gyro = 0;
   
   getInput("chassis_gyro", chassis_gyro);
   getInput("patrol_mode", patrol_mode);
   getInput("power_mode", power_mode);
+  getInput("rough_road_active", rough_road_active);
+  getInput("rough_chassis_gyro", rough_chassis_gyro);
+  if (rough_road_active) {
+    chassis_gyro = rough_chassis_gyro;
+  }
 
   msg.chassis_gyro = static_cast<uint16_t>(std::clamp(chassis_gyro, 0, 65535));
   msg.patrol_mode = clamp_to_u8(patrol_mode);
