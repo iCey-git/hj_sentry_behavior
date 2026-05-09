@@ -150,12 +150,10 @@
             <input_port name="enemy_max_distance" type="double" default="8.000000">Max enemy distance for attack posture</input_port>
             <input_port name="enemy_rx_time_sec" type="double" default="{@target_info_rx_time_sec}">Last receive time of target_info in ROS time seconds</input_port>
             <input_port name="enemy_stale_timeout_sec" type="double" default="0.300000">Enemy message stale timeout</input_port>
-            <input_port name="decay_sec" type="double" default="180.000000">Posture decay threshold in seconds</input_port>
             <input_port name="defense_hp_threshold" type="int" default="200">HP threshold for defense posture</input_port>
             <input_port name="status_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
             <input_port name="cooldown_sec" type="double" default="5.000000">Minimum seconds between posture switches</input_port>
             <input_port name="damage_threshold" type="int" default="80">HP drop threshold in damage window</input_port>
-            <input_port name="budget_guard_sec" type="double" default="170.000000">Prefer moving posture after this posture usage</input_port>
             <input_port name="base_frame" type="std::string" default="base_footprint">Robot base frame</input_port>
             <input_port name="damage_window_sec" type="double" default="3.000000">HP drop detection window</input_port>
             <input_port name="highland_polygon" type="std::string" default="{@highland_polygon}">Central highland polygon</input_port>

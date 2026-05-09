@@ -44,8 +44,6 @@ private:
     double enemy_max_distance = 8.0;
     double enemy_stale_timeout_sec = 0.3;
     double cooldown_sec = 5.0;
-    double decay_sec = 180.0;
-    double budget_guard_sec = 170.0;
     double damage_window_sec = 3.0;
     int damage_threshold = 80;
     int defense_hp_threshold = 200;
@@ -88,8 +86,6 @@ private:
   bool match_state_initialized_ = false;
   bool was_game_running_ = false;
 
-  std::array<double, 4> posture_usage_sec_ = {0.0, 0.0, 0.0, 0.0};
-  std::array<bool, 4> posture_decay_reported_ = {false, false, false, false};
   std::deque<std::pair<double, int>> hp_history_;
 
   std::optional<robot_msgs::msg::CompetitionInfo> latest_status_;

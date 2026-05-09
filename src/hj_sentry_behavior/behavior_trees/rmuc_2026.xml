@@ -225,8 +225,6 @@
                           enemy_max_distance="{@posture_enemy_max_distance}"
                           enemy_stale_timeout_sec="{@posture_enemy_stale_timeout_sec}"
                           cooldown_sec="{@posture_cooldown_sec}"
-                          decay_sec="{@posture_decay_sec}"
-                          budget_guard_sec="{@posture_budget_guard_sec}"
                           damage_window_sec="{@posture_damage_window_sec}"
                           damage_threshold="{@posture_damage_threshold}"
                           defense_hp_threshold="{@posture_defense_hp_threshold}"
@@ -423,8 +421,6 @@
       <input_port name="enemy_max_distance" default="8.0" type="double">Max enemy distance for attack posture</input_port>
       <input_port name="enemy_stale_timeout_sec" default="0.3" type="double">Enemy message stale timeout</input_port>
       <input_port name="cooldown_sec" default="5.0" type="double">Minimum seconds between posture switches</input_port>
-      <input_port name="decay_sec" default="180.0" type="double">Posture decay threshold in seconds</input_port>
-      <input_port name="budget_guard_sec" default="170.0" type="double">Prefer moving posture after this posture usage</input_port>
       <input_port name="damage_window_sec" default="3.0" type="double">HP drop detection window</input_port>
       <input_port name="damage_threshold" default="80" type="int">HP drop threshold in damage window</input_port>
       <input_port name="defense_hp_threshold" default="200" type="int">HP threshold for defense posture</input_port>

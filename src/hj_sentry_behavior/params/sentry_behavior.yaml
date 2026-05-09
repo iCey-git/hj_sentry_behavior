@@ -50,8 +50,6 @@ bt_action_server:
 
     # 姿态切换参数 1=进攻, 2=防御, 3=移动
     posture_cooldown_sec: 5.0                   # 每次切换姿态后的冷却时间
-    posture_decay_sec: 180.0                    # 单姿态累计使用超过该时间后衰减
-    posture_budget_guard_sec: 170.0             # 接近衰减前尽量切回移动姿态
     posture_damage_window_sec: 3.0              # 掉血检测窗口
     posture_damage_threshold: 1                 # 警戒态窗口内任意掉血进入防御姿态
     posture_defense_hp_threshold: 200           # 低血移动回补给分界

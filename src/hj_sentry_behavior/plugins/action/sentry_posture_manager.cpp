@@ -39,9 +39,6 @@ BT::PortsList SentryPostureManager::providedPorts()
     BT::InputPort<double>("enemy_max_distance", 8.0, "Max enemy distance for attack posture"),
     BT::InputPort<double>("enemy_stale_timeout_sec", 0.3, "Enemy message stale timeout"),
     BT::InputPort<double>("cooldown_sec", 5.0, "Minimum seconds between posture switches"),
-    BT::InputPort<double>("decay_sec", 180.0, "Posture decay threshold in seconds"),
-    BT::InputPort<double>(
-      "budget_guard_sec", 170.0, "Prefer moving posture after this posture usage"),
     BT::InputPort<double>("damage_window_sec", 3.0, "HP drop detection window"),
     BT::InputPort<int>("damage_threshold", 80, "HP drop threshold in damage window"),
     BT::InputPort<int>("defense_hp_threshold", 200, "HP threshold for defense posture"),
@@ -128,8 +125,6 @@ SentryPostureManager::Config SentryPostureManager::readConfig()
   getInput("enemy_max_distance", config.enemy_max_distance);
   getInput("enemy_stale_timeout_sec", config.enemy_stale_timeout_sec);
   getInput("cooldown_sec", config.cooldown_sec);
-  getInput("decay_sec", config.decay_sec);
-  getInput("budget_guard_sec", config.budget_guard_sec);
   getInput("damage_window_sec", config.damage_window_sec);
   getInput("damage_threshold", config.damage_threshold);
   getInput("defense_hp_threshold", config.defense_hp_threshold);
@@ -150,36 +145,20 @@ void SentryPostureManager::resetMatchState(double now_sec)
   defense_linger_until_sec_ = 0.0;
   attack_linger_until_sec_ = 0.0;
   match_state_initialized_ = true;
-  posture_usage_sec_.fill(0.0);
-  posture_decay_reported_.fill(false);
   hp_history_.clear();
 }
 
 void SentryPostureManager::updatePostureTime(
   double now_sec, bool count_time, const Config & config)
 {
+  (void)count_time;
+  (void)config;
   if (!match_state_initialized_) {
     last_tick_time_sec_ = now_sec;
     match_state_initialized_ = true;
     return;
   }
-
-  const double dt = std::max(0.0, now_sec - last_tick_time_sec_);
   last_tick_time_sec_ = now_sec;
-  if (!count_time || current_posture_ >= posture_usage_sec_.size()) {
-    return;
-  }
-
-  posture_usage_sec_[current_posture_] += dt;
-  if (
-    !posture_decay_reported_[current_posture_] &&
-    posture_usage_sec_[current_posture_] >= config.decay_sec)
-  {
-    posture_decay_reported_[current_posture_] = true;
-    RCLCPP_WARN(
-      node_->get_logger(), "Sentry posture %u usage reached decay threshold %.1fs",
-      current_posture_, config.decay_sec);
-  }
 }
 
 void SentryPostureManager::updateHpHistory(double now_sec, int hp, double window_sec)
@@ -293,8 +272,9 @@ uint8_t SentryPostureManager::chooseDesiredPosture(
     return kMovePosture;
   }
 
+  // HP <= 200: stay and fight when in highland, else move home
   if (current_hp <= config.defense_hp_threshold) {
-    return kMovePosture;
+    return in_highland ? kDefensePosture : kMovePosture;
   }
 
   const bool warning_hp =
@@ -310,35 +290,23 @@ uint8_t SentryPostureManager::chooseDesiredPosture(
   }
 
   if (warning_hp && now_sec <= defense_linger_until_sec_) {
-    if (posture_usage_sec_[kDefensePosture] >= config.budget_guard_sec) {
-      return kMovePosture;
-    }
     return kDefensePosture;
   }
 
   if (warning_hp && !outpost_alive && enemy_visible) {
-    if (posture_usage_sec_[kDefensePosture] < config.budget_guard_sec) {
-      defense_linger_until_sec_ = now_sec + config.linger_sec;
-      return kDefensePosture;
-    }
-    return kMovePosture;
+    defense_linger_until_sec_ = now_sec + config.linger_sec;
+    return kDefensePosture;
   }
 
   if (warning_hp && outpost_alive && in_highland) {
-    if (posture_usage_sec_[kAttackPosture] < config.budget_guard_sec) {
-      return kAttackPosture;
-    }
-    return kMovePosture;
+    return kAttackPosture;
   }
 
   if (warning_hp) {
-    return kMovePosture;
+    return kDefensePosture;
   }
 
   if (healthy_hp && now_sec <= attack_linger_until_sec_) {
-    if (posture_usage_sec_[kAttackPosture] >= config.budget_guard_sec) {
-      return kMovePosture;
-    }
     return kAttackPosture;
   }
 
