@@ -113,6 +113,14 @@ def generate_launch_description():
                 parameters=[configured_params],
                 arguments=["--ros-args", "--log-level", log_level],
             ),
+            Node(
+                package="pb2025_sentry_behavior",
+                executable="mapping_bag_recorder.py",
+                name="mapping_bag_recorder",
+                output="screen",
+                parameters=[configured_params],
+                arguments=["--ros-args", "--log-level", log_level],
+            ),
             fake_referee_node,
         ]
     )

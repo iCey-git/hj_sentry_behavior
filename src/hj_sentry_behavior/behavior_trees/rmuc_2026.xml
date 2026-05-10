@@ -48,9 +48,22 @@
                                    base_frame="base_footprint"/>
             <!-- 当前多点实现是逐点 NavigateToPose，不是 ThroughPoses。 -->
             <ForceSuccess>
-              <Nav2Pose action_name="navigate_to_pose"
-                        goal_pose_topic="/goal_pose"
-                        goal="{current_goal}"/>
+              <Nav2PoseRoughRoad action_name="navigate_to_pose"
+                                 goal_pose_topic="/goal_pose"
+                                 goal="{current_goal}"
+                                 rough_road_polygon="{@rough_road_polygon}"
+                                 rough_home_side_anchor="{@rough_home_side_anchor}"
+                                 rough_highland_side_anchor="{@rough_highland_side_anchor}"
+                                 rough_cross_timeout_sec="{@rough_cross_timeout_sec}"
+                                 home_to_highland_vx="{@home_to_highland_vx}"
+                                 home_to_highland_vy="{@home_to_highland_vy}"
+                                 home_to_highland_vyaw="{@home_to_highland_vyaw}"
+                                 highland_to_home_vx="{@highland_to_home_vx}"
+                                 highland_to_home_vy="{@highland_to_home_vy}"
+                                 highland_to_home_vyaw="{@highland_to_home_vyaw}"
+                                 cmd_vel_topic="cmd_vel"
+                                 map_frame="map"
+                                 base_frame="base_footprint"/>
             </ForceSuccess>
             <!-- 到达航点后等待 wait_sec -->
             <WaitDuration wait_sec="{current_wait_sec}"/>
@@ -79,9 +92,22 @@
                              map_frame="map"
                              base_frame="base_footprint"/>
       <ForceSuccess>
-        <Nav2Pose action_name="navigate_to_pose"
-                  goal_pose_topic="/goal_pose"
-                  goal="{single_goal}"/>
+        <Nav2PoseRoughRoad action_name="navigate_to_pose"
+                           goal_pose_topic="/goal_pose"
+                           goal="{single_goal}"
+                           rough_road_polygon="{@rough_road_polygon}"
+                           rough_home_side_anchor="{@rough_home_side_anchor}"
+                           rough_highland_side_anchor="{@rough_highland_side_anchor}"
+                           rough_cross_timeout_sec="{@rough_cross_timeout_sec}"
+                           home_to_highland_vx="{@home_to_highland_vx}"
+                           home_to_highland_vy="{@home_to_highland_vy}"
+                           home_to_highland_vyaw="{@home_to_highland_vyaw}"
+                           highland_to_home_vx="{@highland_to_home_vx}"
+                           highland_to_home_vy="{@highland_to_home_vy}"
+                           highland_to_home_vyaw="{@highland_to_home_vyaw}"
+                           cmd_vel_topic="cmd_vel"
+                           map_frame="map"
+                           base_frame="base_footprint"/>
       </ForceSuccess>
     </Sequence>
   </BehaviorTree>
@@ -106,9 +132,22 @@
                                  base_frame="base_footprint"/>
           <ForceSuccess>
             <TickAfterTimeout timeout="{@single_goal_refresh_sec}">
-              <Nav2Pose action_name="navigate_to_pose"
-                        goal_pose_topic="/goal_pose"
-                        goal="{single_goal}"/>
+              <Nav2PoseRoughRoad action_name="navigate_to_pose"
+                                 goal_pose_topic="/goal_pose"
+                                 goal="{single_goal}"
+                                 rough_road_polygon="{@rough_road_polygon}"
+                                 rough_home_side_anchor="{@rough_home_side_anchor}"
+                                 rough_highland_side_anchor="{@rough_highland_side_anchor}"
+                                 rough_cross_timeout_sec="{@rough_cross_timeout_sec}"
+                                 home_to_highland_vx="{@home_to_highland_vx}"
+                                 home_to_highland_vy="{@home_to_highland_vy}"
+                                 home_to_highland_vyaw="{@home_to_highland_vyaw}"
+                                 highland_to_home_vx="{@highland_to_home_vx}"
+                                 highland_to_home_vy="{@highland_to_home_vy}"
+                                 highland_to_home_vyaw="{@highland_to_home_vyaw}"
+                                 cmd_vel_topic="cmd_vel"
+                                 map_frame="map"
+                                 base_frame="base_footprint"/>
             </TickAfterTimeout>
           </ForceSuccess>
         </Sequence>
@@ -133,9 +172,22 @@
                              map_frame="map"
                              base_frame="base_footprint"/>
       <ForceSuccess>
-        <Nav2Pose action_name="navigate_to_pose"
-                  goal_pose_topic="/goal_pose"
-                  goal="{single_goal}"/>
+        <Nav2PoseRoughRoad action_name="navigate_to_pose"
+                           goal_pose_topic="/goal_pose"
+                           goal="{single_goal}"
+                           rough_road_polygon="{@rough_road_polygon}"
+                           rough_home_side_anchor="{@rough_home_side_anchor}"
+                           rough_highland_side_anchor="{@rough_highland_side_anchor}"
+                           rough_cross_timeout_sec="{@rough_cross_timeout_sec}"
+                           home_to_highland_vx="{@home_to_highland_vx}"
+                           home_to_highland_vy="{@home_to_highland_vy}"
+                           home_to_highland_vyaw="{@home_to_highland_vyaw}"
+                           highland_to_home_vx="{@highland_to_home_vx}"
+                           highland_to_home_vy="{@highland_to_home_vy}"
+                           highland_to_home_vyaw="{@highland_to_home_vyaw}"
+                           cmd_vel_topic="cmd_vel"
+                           map_frame="map"
+                           base_frame="base_footprint"/>
       </ForceSuccess>
     </Sequence>
   </BehaviorTree>
@@ -386,6 +438,25 @@
                   type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Expected goal pose. Fill with format `x;y;yaw`</input_port>
       <input_port name="action_name" default="navigate_to_pose" type="std::string">Action server name</input_port>
       <input_port name="goal_pose_topic" default="/goal_pose" type="std::string">Goal pose topic for yaw controller</input_port>
+    </Action>
+    <Action ID="Nav2PoseRoughRoad">
+      <input_port name="goal" default="0;0;0"
+                  type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Expected goal pose. Fill with format `x;y;yaw`</input_port>
+      <input_port name="action_name" default="navigate_to_pose" type="std::string">Action server name</input_port>
+      <input_port name="goal_pose_topic" default="/goal_pose" type="std::string">Goal pose topic for yaw controller</input_port>
+      <input_port name="rough_road_polygon" default="{@rough_road_polygon}" type="std::string">Rough road polygon x,y;x,y;...</input_port>
+      <input_port name="map_frame" default="map" type="std::string">Map frame</input_port>
+      <input_port name="base_frame" default="base_footprint" type="std::string">Robot base frame</input_port>
+      <input_port name="cmd_vel_topic" default="cmd_vel" type="std::string">Twist topic for rough road override</input_port>
+      <input_port name="rough_cross_timeout_sec" default="{@rough_cross_timeout_sec}" type="double">Timeout for manual rough road crossing</input_port>
+      <input_port name="rough_home_side_anchor" default="{@rough_home_side_anchor}" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Reference anchor on the home side of rough road</input_port>
+      <input_port name="rough_highland_side_anchor" default="{@rough_highland_side_anchor}" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Reference anchor on the highland side of rough road</input_port>
+      <input_port name="home_to_highland_vx" default="{@home_to_highland_vx}" type="double">Linear X velocity from home to highland</input_port>
+      <input_port name="home_to_highland_vy" default="{@home_to_highland_vy}" type="double">Linear Y velocity from home to highland</input_port>
+      <input_port name="home_to_highland_vyaw" default="{@home_to_highland_vyaw}" type="double">Angular velocity from home to highland</input_port>
+      <input_port name="highland_to_home_vx" default="{@highland_to_home_vx}" type="double">Linear X velocity from highland to home</input_port>
+      <input_port name="highland_to_home_vy" default="{@highland_to_home_vy}" type="double">Linear Y velocity from highland to home</input_port>
+      <input_port name="highland_to_home_vyaw" default="{@highland_to_home_vyaw}" type="double">Angular velocity from highland to home</input_port>
     </Action>
     <Action ID="PublishModeControl">
       <input_port name="chassis_gyro" default="0" type="int">0: off, 1: on, 2: alignment correction</input_port>
