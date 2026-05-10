@@ -310,6 +310,10 @@ uint8_t SentryPostureManager::chooseDesiredPosture(
     return kAttackPosture;
   }
 
+  if (healthy_hp && in_highland) {
+    return kDefensePosture;
+  }
+
   return kMovePosture;
 }
 

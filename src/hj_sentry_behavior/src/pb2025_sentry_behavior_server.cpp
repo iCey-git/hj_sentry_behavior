@@ -50,6 +50,9 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
       rclcpp::Parameter parameter;
       node()->get_parameter(name, parameter);
       switch (parameter.get_type()) {
+        case rclcpp::ParameterType::PARAMETER_BOOL:
+          globalBlackboard()->set(name, parameter.as_bool());
+          break;
         case rclcpp::ParameterType::PARAMETER_INTEGER:
           globalBlackboard()->set(name, static_cast<int>(parameter.as_int()));
           break;
@@ -125,6 +128,8 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
   set_parameter_to_blackboard(
     "supply_u_inner_polygon", rclcpp::ParameterValue(std::string{}));
   set_parameter_to_blackboard("rough_road_polygon", rclcpp::ParameterValue(std::string{}));
+  set_parameter_to_blackboard("rough_direct_drive_polygon", rclcpp::ParameterValue(std::string{}));
+  set_parameter_to_blackboard("rough_direct_drive_enabled", rclcpp::ParameterValue(true));
   set_parameter_to_blackboard("highland_polygon", rclcpp::ParameterValue(std::string{}));
   set_parameter_to_blackboard("base_protect_hp_threshold", rclcpp::ParameterValue(1500));
   set_double_parameter_to_blackboard("posture_cooldown_sec", 5.0);

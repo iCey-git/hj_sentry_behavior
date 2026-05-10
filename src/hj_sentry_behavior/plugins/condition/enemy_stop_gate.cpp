@@ -40,6 +40,12 @@ BT::PortsList EnemyStopGate::providedPorts()
 
 BT::NodeStatus EnemyStopGate::tick()
 {
+  bool rough_road_active = false;
+  getInput("rough_road_active", rough_road_active);
+  if (rough_road_active) {
+    return BT::NodeStatus::FAILURE;
+  }
+
   float max_distance = 8.0F;
   double stale_timeout_sec = 0.3;
   double linger_sec = 0.8;

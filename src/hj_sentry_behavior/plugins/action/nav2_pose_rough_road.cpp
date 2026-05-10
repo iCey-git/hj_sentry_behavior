@@ -21,6 +21,7 @@
 
 #include "action_msgs/msg/goal_status.hpp"
 #include "pb2025_sentry_behavior/custom_types.hpp"
+#include "rclcpp/parameter_client.hpp"
 
 namespace pb2025_sentry_behavior
 {
@@ -30,7 +31,7 @@ namespace
 
 constexpr double kGoalEpsilon = 1e-6;
 constexpr double kSideUnknownThresholdDefault = 0.3;
-constexpr std::chrono::milliseconds kManualPublishPeriod(40);
+constexpr std::chrono::milliseconds kManualPublishPeriod(2);
 
 bool nearlyEqual(double lhs, double rhs)
 {
@@ -88,6 +89,7 @@ BT::PortsList Nav2PoseRoughRoadAction::providedPorts()
     BT::InputPort<geometry_msgs::msg::PoseStamped>(
       "goal", "0;0;0", "Expected goal pose that send to nav2. Fill with format `x;y;yaw`"),
     BT::InputPort<std::string>("rough_road_polygon", "", "Rough road polygon x,y;x,y;..."),
+    BT::InputPort<std::string>("rough_direct_drive_polygon", "", "Direct-drive rough road polygon x,y;x,y;..."),
     BT::InputPort<std::string>("map_frame", "map", "Map frame"),
     BT::InputPort<std::string>("base_frame", "base_footprint", "Robot base frame"),
     BT::InputPort<std::string>("cmd_vel_topic", "cmd_vel", "Twist topic for rough road override"),
@@ -102,11 +104,15 @@ BT::PortsList Nav2PoseRoughRoadAction::providedPorts()
     BT::InputPort<double>("highland_to_home_vx", 0.8, "Linear X velocity from highland to home"),
     BT::InputPort<double>("highland_to_home_vy", 0.0, "Linear Y velocity from highland to home"),
     BT::InputPort<double>("highland_to_home_vyaw", 0.0, "Angular velocity from highland to home"),
+    BT::InputPort<bool>("rough_direct_drive_enabled", true, "Enable rough road direct drive intercept"),
   };
 }
 
 BT::NodeStatus Nav2PoseRoughRoadAction::onStart()
 {
+  goal_sent_ = false;
+  last_send_attempt_sec_ = 0.0;
+
   auto goal = getInput<geometry_msgs::msg::PoseStamped>("goal");
   if (!goal) {
     RCLCPP_ERROR(node_->get_logger(), "[%s] goal is not set", name().c_str());
@@ -124,7 +130,7 @@ BT::NodeStatus Nav2PoseRoughRoadAction::onStart()
   }
 
   if (!createClient(action_name.value())) {
-    return BT::NodeStatus::FAILURE;
+    return BT::NodeStatus::RUNNING;
   }
 
   if (!configureForGoal(goal.value())) {
@@ -132,15 +138,39 @@ BT::NodeStatus Nav2PoseRoughRoadAction::onStart()
   }
 
   if (!sendGoal(target_goal_)) {
-    return BT::NodeStatus::FAILURE;
+    return BT::NodeStatus::RUNNING;
   }
 
+  goal_sent_ = true;
   return BT::NodeStatus::RUNNING;
 }
 
 BT::NodeStatus Nav2PoseRoughRoadAction::onRunning()
 {
   callback_executor_.spin_some();
+
+  if (!goal_sent_) {
+    // Retry initialization: action server wasn't ready in onStart
+    if (!createClient(action_name_)) {
+      return BT::NodeStatus::RUNNING;
+    }
+    // Only retry sendGoal every 2s to avoid flooding Nav2 with duplicate goals
+    const double now = node_->now().seconds();
+    if (now - last_send_attempt_sec_ >= 2.0) {
+      last_send_attempt_sec_ = now;
+      auto goal = getInput<geometry_msgs::msg::PoseStamped>("goal");
+      if (!goal) {
+        return BT::NodeStatus::FAILURE;
+      }
+      if (!configureForGoal(goal.value())) {
+        return BT::NodeStatus::FAILURE;
+      }
+      if (sendGoal(target_goal_)) {
+        goal_sent_ = true;
+      }
+    }
+    return BT::NodeStatus::RUNNING;
+  }
 
   auto goal = getInput<geometry_msgs::msg::PoseStamped>("goal");
   if (!goal) {
@@ -166,10 +196,13 @@ void Nav2PoseRoughRoadAction::onHalted()
   callback_executor_.spin_some();
   stopManualPublisher();
   publishZeroTwist();
+  restoreControllerSpeed();
   cancelActiveGoal();
   resetGoalState();
   rough_intercept_enabled_ = false;
   entered_polygon_once_ = false;
+  goal_sent_ = false;
+  last_send_attempt_sec_ = 0.0;
   mode_ = ExecutionMode::PLAIN_NAV;
   start_side_ = Side::UNKNOWN;
   goal_side_ = Side::UNKNOWN;
@@ -230,6 +263,13 @@ bool Nav2PoseRoughRoadAction::configureForGoal(const geometry_msgs::msg::PoseSta
 
   if (!loadPolygon(rough_polygon_) || rough_polygon_.empty()) {
     mode_ = ExecutionMode::PLAIN_NAV;
+    return true;
+  }
+
+  getInput("rough_direct_drive_enabled", rough_direct_drive_enabled_);
+  if (!rough_direct_drive_enabled_) {
+    mode_ = ExecutionMode::PLAIN_NAV;
+    rough_intercept_enabled_ = false;
     return true;
   }
 
@@ -313,6 +353,7 @@ BT::NodeStatus Nav2PoseRoughRoadAction::handleNavPhase(
     if (lookupRobotPosition(robot_x, robot_y) && isInsidePolygon(robot_x, robot_y, rough_polygon_)) {
       entered_polygon_once_ = true;
       manual_start_time_ = node_->now();
+      suppressControllerSpeed();
       cancelActiveGoal();
       mode_ = ExecutionMode::MANUAL_CROSS;
       startManualPublisher();
@@ -388,6 +429,7 @@ BT::NodeStatus Nav2PoseRoughRoadAction::handleManualCross(
   if (!goalsEqual(goal, target_goal_)) {
     stopManualPublisher();
     publishZeroTwist();
+    restoreControllerSpeed();
     resetGoalState();
     if (!configurePublishers() || !configureForGoal(goal) || !sendGoal(target_goal_)) {
       return BT::NodeStatus::FAILURE;
@@ -402,6 +444,7 @@ BT::NodeStatus Nav2PoseRoughRoadAction::handleManualCross(
     RCLCPP_ERROR(node_->get_logger(), "[%s] manual rough road crossing timed out", name().c_str());
     stopManualPublisher();
     publishZeroTwist();
+    restoreControllerSpeed();
     resetGoalState();
     return BT::NodeStatus::FAILURE;
   }
@@ -415,6 +458,7 @@ BT::NodeStatus Nav2PoseRoughRoadAction::handleManualCross(
   if (entered_polygon_once_ && !isInsidePolygon(robot_x, robot_y, rough_polygon_)) {
     stopManualPublisher();
     publishZeroTwist();
+    restoreControllerSpeed();
     mode_ = ExecutionMode::REJOIN_NAV;
     resetGoalState();
     if (!sendGoal(target_goal_)) {
@@ -524,7 +568,7 @@ void Nav2PoseRoughRoadAction::resetGoalState()
 bool Nav2PoseRoughRoadAction::loadPolygon(std::vector<geometry_msgs::msg::Point> & polygon)
 {
   std::string polygon_str;
-  getInput("rough_road_polygon", polygon_str);
+  getInput("rough_direct_drive_polygon", polygon_str);
   if (polygon_str.empty()) {
     polygon.clear();
     return true;
@@ -692,6 +736,180 @@ bool Nav2PoseRoughRoadAction::goalsEqual(
     nearlyEqual(lhs.pose.orientation.y, rhs.pose.orientation.y) &&
     nearlyEqual(lhs.pose.orientation.z, rhs.pose.orientation.z) &&
     nearlyEqual(lhs.pose.orientation.w, rhs.pose.orientation.w);
+}
+
+void Nav2PoseRoughRoadAction::ensureSpeedParameterClients()
+{
+  std::lock_guard<std::mutex> lock(speed_param_mutex_);
+  if (controller_params_client_ && smoother_params_client_) {
+    return;
+  }
+
+  controller_params_client_ =
+    std::make_shared<rclcpp::AsyncParametersClient>(node_, controller_node_);
+  smoother_params_client_ =
+    std::make_shared<rclcpp::AsyncParametersClient>(node_, smoother_node_);
+  controller_defaults_loaded_ = false;
+  defaults_requested_ = false;
+}
+
+void Nav2PoseRoughRoadAction::suppressControllerSpeed()
+{
+  ensureSpeedParameterClients();
+
+  // Load defaults if we haven't already
+  if (!controller_defaults_loaded_) {
+    std::lock_guard<std::mutex> lock(speed_param_mutex_);
+    if (!defaults_requested_ && controller_params_client_ && smoother_params_client_)
+    {
+      if (controller_params_client_->service_is_ready() &&
+          smoother_params_client_->service_is_ready())
+      {
+        defaults_requested_ = true;
+
+        controller_params_client_->get_parameters(
+          {"FollowPath.v_linear_min", "FollowPath.v_linear_max",
+           "FollowPath.v_angular_min", "FollowPath.v_angular_max"},
+          [this](std::shared_future<std::vector<rclcpp::Parameter>> future) {
+            try {
+              const auto params = future.get();
+              if (params.size() == 4) {
+                std::lock_guard<std::mutex> lock(speed_param_mutex_);
+                default_v_linear_min_ = params[0].as_double();
+                default_v_linear_max_ = params[1].as_double();
+                default_v_angular_min_ = params[2].as_double();
+                default_v_angular_max_ = params[3].as_double();
+                controller_defaults_loaded_ = true;
+              }
+            } catch (const std::exception & ex) {
+              std::lock_guard<std::mutex> lock(speed_param_mutex_);
+              defaults_requested_ = false;
+            }
+          });
+
+        smoother_params_client_->get_parameters(
+          {"max_velocity", "min_velocity"},
+          [this](std::shared_future<std::vector<rclcpp::Parameter>> future) {
+            try {
+              const auto params = future.get();
+              if (params.size() == 2) {
+                std::lock_guard<std::mutex> lock(speed_param_mutex_);
+                default_smoother_max_ = params[0].as_double_array();
+                default_smoother_min_ = params[1].as_double_array();
+              }
+            } catch (const std::exception & ex) {
+              // non-fatal, smoother restore will be skipped if defaults missing
+            }
+          });
+      }
+    }
+  }
+
+  // Set controller speed limits to near-zero
+  if (controller_params_client_ && controller_params_client_->service_is_ready()) {
+    controller_params_client_->set_parameters(
+      {
+        rclcpp::Parameter("FollowPath.v_linear_min", 0.0),
+        rclcpp::Parameter("FollowPath.v_linear_max", 0.0),
+        rclcpp::Parameter("FollowPath.v_angular_min", 0.0),
+        rclcpp::Parameter("FollowPath.v_angular_max", 0.0),
+      },
+      [this](std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> future) {
+        try {
+          for (const auto & result : future.get()) {
+            if (!result.successful) {
+              RCLCPP_WARN(node_->get_logger(),
+                "[%s] failed to suppress controller speed: %s", name().c_str(),
+                result.reason.c_str());
+            }
+          }
+        } catch (const std::exception & ex) {
+          RCLCPP_WARN(node_->get_logger(),
+            "[%s] suppress controller speed exception: %s", name().c_str(), ex.what());
+        }
+      });
+  }
+
+  // Set smoother to near-zero as well
+  if (smoother_params_client_ && smoother_params_client_->service_is_ready()) {
+    const std::vector<double> zero_velocity = {0.1, 0.1, 0.1};
+    const std::vector<double> neg_zero_velocity = {-0.1, -0.1, -0.1};
+    smoother_params_client_->set_parameters(
+      {
+        rclcpp::Parameter("max_velocity", zero_velocity),
+        rclcpp::Parameter("min_velocity", neg_zero_velocity),
+      },
+      [this](std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> future) {
+        try {
+          for (const auto & result : future.get()) {
+            if (!result.successful) {
+              RCLCPP_WARN(node_->get_logger(),
+                "[%s] failed to suppress smoother speed: %s", name().c_str(),
+                result.reason.c_str());
+            }
+          }
+        } catch (const std::exception & ex) {
+          RCLCPP_WARN(node_->get_logger(),
+            "[%s] suppress smoother speed exception: %s", name().c_str(), ex.what());
+        }
+      });
+  }
+}
+
+void Nav2PoseRoughRoadAction::restoreControllerSpeed()
+{
+  std::lock_guard<std::mutex> lock(speed_param_mutex_);
+  if (!controller_defaults_loaded_) {
+    return;
+  }
+
+  if (controller_params_client_ && controller_params_client_->service_is_ready()) {
+    controller_params_client_->set_parameters(
+      {
+        rclcpp::Parameter("FollowPath.v_linear_min", default_v_linear_min_),
+        rclcpp::Parameter("FollowPath.v_linear_max", default_v_linear_max_),
+        rclcpp::Parameter("FollowPath.v_angular_min", default_v_angular_min_),
+        rclcpp::Parameter("FollowPath.v_angular_max", default_v_angular_max_),
+      },
+      [this](std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> future) {
+        try {
+          for (const auto & result : future.get()) {
+            if (!result.successful) {
+              RCLCPP_WARN(node_->get_logger(),
+                "[%s] failed to restore controller speed: %s", name().c_str(),
+                result.reason.c_str());
+            }
+          }
+        } catch (const std::exception & ex) {
+          RCLCPP_WARN(node_->get_logger(),
+            "[%s] restore controller speed exception: %s", name().c_str(), ex.what());
+        }
+      });
+  }
+
+  if (smoother_params_client_ && smoother_params_client_->service_is_ready() &&
+      !default_smoother_max_.empty() && !default_smoother_min_.empty())
+  {
+    smoother_params_client_->set_parameters(
+      {
+        rclcpp::Parameter("max_velocity", default_smoother_max_),
+        rclcpp::Parameter("min_velocity", default_smoother_min_),
+      },
+      [this](std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> future) {
+        try {
+          for (const auto & result : future.get()) {
+            if (!result.successful) {
+              RCLCPP_WARN(node_->get_logger(),
+                "[%s] failed to restore smoother speed: %s", name().c_str(),
+                result.reason.c_str());
+            }
+          }
+        } catch (const std::exception & ex) {
+          RCLCPP_WARN(node_->get_logger(),
+            "[%s] restore smoother speed exception: %s", name().c_str(), ex.what());
+        }
+      });
+  }
 }
 
 }  // namespace pb2025_sentry_behavior

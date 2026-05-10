@@ -115,7 +115,10 @@ private:
   double rough_cross_timeout_sec_ = 6.0;
   double side_unknown_threshold_m_ = 0.3;
   bool rough_intercept_enabled_ = false;
+  bool rough_direct_drive_enabled_ = true;
   bool entered_polygon_once_ = false;
+  bool goal_sent_ = false;
+  double last_send_attempt_sec_ = 0.0;
   ExecutionMode mode_ = ExecutionMode::PLAIN_NAV;
   Side start_side_ = Side::UNKNOWN;
   Side goal_side_ = Side::UNKNOWN;
@@ -123,6 +126,24 @@ private:
   std::mutex manual_command_mutex_;
   rclcpp::Time manual_start_time_{0, 0, RCL_ROS_TIME};
   std::vector<geometry_msgs::msg::Point> rough_polygon_;
+
+  // Controller speed suppression during manual cross
+  void ensureSpeedParameterClients();
+  void suppressControllerSpeed();
+  void restoreControllerSpeed();
+  std::shared_ptr<rclcpp::AsyncParametersClient> controller_params_client_;
+  std::shared_ptr<rclcpp::AsyncParametersClient> smoother_params_client_;
+  std::string controller_node_{"/controller_server"};
+  std::string smoother_node_{"/velocity_smoother"};
+  bool controller_defaults_loaded_ = false;
+  bool defaults_requested_ = false;
+  double default_v_linear_min_ = 0.0;
+  double default_v_linear_max_ = 0.0;
+  double default_v_angular_min_ = 0.0;
+  double default_v_angular_max_ = 0.0;
+  std::vector<double> default_smoother_max_;
+  std::vector<double> default_smoother_min_;
+  std::mutex speed_param_mutex_;
 };
 
 }  // namespace pb2025_sentry_behavior
