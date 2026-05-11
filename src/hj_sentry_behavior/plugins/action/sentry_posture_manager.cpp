@@ -113,7 +113,11 @@ BT::NodeStatus SentryPostureManager::tick()
     config, game_running, alive, current_hp, enemy_outpost_hp, defense_raw, enemy_visible,
     in_highland, now_sec);
   applyCooldown(desired_posture, now_sec, config.cooldown_sec);
-  publishPosture(config, current_posture_);
+
+  const uint8_t actual = latest_status_->sentry_posture;
+  if (current_posture_ != actual) {
+    publishPosture(config, current_posture_);
+  }
 
   return BT::NodeStatus::SUCCESS;
 }
