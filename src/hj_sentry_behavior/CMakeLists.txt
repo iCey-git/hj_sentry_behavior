@@ -91,6 +91,9 @@ list(APPEND plugin_libs load_waypoints)
 ament_auto_add_library(get_current_waypoint SHARED plugins/action/get_current_waypoint.cpp)
 list(APPEND plugin_libs get_current_waypoint)
 
+ament_auto_add_library(update_manual_nav_goal SHARED plugins/action/update_manual_nav_goal.cpp)
+list(APPEND plugin_libs update_manual_nav_goal)
+
 ament_auto_add_library(wait_duration SHARED plugins/action/wait_duration.cpp)
 list(APPEND plugin_libs wait_duration)
 
@@ -128,6 +131,16 @@ if(BUILD_TESTING)
   ament_add_gtest(test_omni_perception_utils test/test_omni_perception_utils.cpp)
   target_include_directories(test_omni_perception_utils PRIVATE include)
   ament_target_dependencies(test_omni_perception_utils robot_msgs)
+
+  ament_add_gtest(test_update_manual_nav_goal test/test_update_manual_nav_goal.cpp)
+  target_include_directories(test_update_manual_nav_goal PRIVATE include)
+  ament_target_dependencies(
+    test_update_manual_nav_goal
+    robot_msgs
+    geometry_msgs
+    tf2_geometry_msgs
+  )
+  target_link_libraries(test_update_manual_nav_goal update_manual_nav_goal)
 endif()
 
 #############

@@ -110,6 +110,12 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
   set_pose_parameter_to_blackboard("rough_home_side_anchor", "-0.9;-7.0;0");
   set_pose_parameter_to_blackboard("rough_highland_side_anchor", "8.0;-7.0;0");
   set_parameter_to_blackboard("single_goal_refresh_sec", rclcpp::ParameterValue(10.0));
+  set_parameter_to_blackboard("our_side", rclcpp::ParameterValue(std::string("red")));
+  set_double_parameter_to_blackboard("field_length_m", 28.0);
+  set_double_parameter_to_blackboard("field_width_m", 15.0);
+  set_double_parameter_to_blackboard("manual_nav_map_offset_x", -3.68);
+  set_double_parameter_to_blackboard("manual_nav_map_offset_y", -8.46);
+  set_double_parameter_to_blackboard("manual_nav_goal_yaw", 0.0);
   set_double_parameter_to_blackboard("rough_cross_timeout_sec", 6.0);
   set_double_parameter_to_blackboard("home_to_highland_vx", 0.8);
   set_double_parameter_to_blackboard("home_to_highland_vy", 0.0);
@@ -152,6 +158,8 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
     "patrol_late_route", rclcpp::ParameterValue(std::string{}));
   globalBlackboard()->set("supply_route_locked", false);
   globalBlackboard()->set("selected_supply_route", std::string{});
+  globalBlackboard()->set("manual_nav_goal_set", false);
+  globalBlackboard()->set("manual_nav_goal", geometry_msgs::msg::PoseStamped{});
 
   auto competition_sub = node()->create_subscription<robot_msgs::msg::CompetitionInfo>(
     "/competition_info", rclcpp::SystemDefaultsQoS(),

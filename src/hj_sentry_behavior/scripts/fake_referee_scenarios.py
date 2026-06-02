@@ -72,7 +72,7 @@ SCENARIOS = {
         "stage_remain_time": 180,
         "center_gain_point": True,
     },
-    # Sentry dead: check_death should take highest priority after game start.
+    # HP == 0 now falls through the same low-status path as other bad states.
     "sentry_dead": {
         "game_state": 4,
         "our_sentry_hp": 0,

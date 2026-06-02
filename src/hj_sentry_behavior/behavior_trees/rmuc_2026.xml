@@ -3,7 +3,6 @@
   RMUC 2026 哨兵主行为树
   策略层: 
     check_game_start   — 比赛未开始则停车等待
-    check_death        — 我方哨兵 HP==0, 死循环等待复活
     check_supply       — HP/弹药不足, 单点回补给
     engage_enemy       — 检测到敌人, 停底盘交给自瞄
     pressure_outpost   — 敌方前哨站存活, 单点压前哨
@@ -223,26 +222,6 @@
     </Fallback>
   </BehaviorTree>
 
-  <!-- 哨兵死亡 死循环等待复活, 期间发停车指令 -->
-  <BehaviorTree ID="check_death">
-    <Sequence _while="@our_sentry_hp==0">
-      <PublishModeControl chassis_gyro="0"
-                          patrol_mode="255"
-                          power_mode="12"
-                          duration="0"
-                          topic_name="/mode_ctrl"/>
-      <PublishTwist v_y="0.0"
-                    v_yaw="0.0"
-                    v_x="0.0"
-                    duration="0"
-                    topic_name="cmd_vel"/>
-      <!-- BT.CPP 4.6 has no AlwaysRunning node; this keeps returning RUNNING. -->
-      <KeepRunningUntilFailure>
-        <AlwaysSuccess/>
-      </KeepRunningUntilFailure>
-    </Sequence>
-  </BehaviorTree>
-
   <!-- 回家补给逻辑 根据 IsStatusOK 的返回值判断 -->
   <BehaviorTree ID="check_supply">
     <!-- ReactiveSequence: 每次 tick 都先重查状态，低血/低弹立即切回家，恢复后立即退出补给。 -->
@@ -274,6 +253,22 @@
                    rx_time_sec="{@target_info_rx_time_sec}"
                    rough_road_active="{@rough_road_active}"
                    rough_chassis_gyro="0"/>
+  </BehaviorTree>
+
+  <!-- 锁存式手发点分支：一旦收到点，就持续占据该点，直到新点覆盖 -->
+  <BehaviorTree ID="manual_nav_latched">
+    <Sequence>
+      <UpdateManualNavGoal competition_port="{@referee_robotStatus}"
+                           our_side="{@our_side}"
+                           field_length_m="{@field_length_m}"
+                           field_width_m="{@field_width_m}"
+                           map_offset_x="{@manual_nav_map_offset_x}"
+                           map_offset_y="{@manual_nav_map_offset_y}"
+                           goal_yaw="{@manual_nav_goal_yaw}"
+                           goal="{manual_nav_goal}"
+                           goal_set="{manual_nav_goal_set}"/>
+      <SubTree ID="hold_single_goal" single_goal="{manual_nav_goal}"/>
+    </Sequence>
   </BehaviorTree>
 
   <!-- 姿态管理：/sentry_posture_cmd, 1=进攻, 2=防御, 3=移动 -->
@@ -380,14 +375,14 @@
           <!--  策略优先级  -->
           <ReactiveFallback>
 
-            <!-- P1: 死亡  -->
-            <SubTree ID="check_death"/>
-
-            <!-- P2: 补给  -->
+            <!-- P1: 补给  -->
             <SubTree ID="check_supply"/>
 
-            <!-- P3: 敌情响应  -->
+            <!-- P2: 敌情响应  -->
             <SubTree ID="engage_enemy"/>
+
+            <!-- P3: 锁存式手发点 -->
+            <SubTree ID="manual_nav_latched"/>
 
             <!-- P4: 压前哨 -->
             <SubTree ID="pressure_outpost"/>
@@ -536,6 +531,19 @@
       <output_port name="current_goal" default="{current_goal}"
                    type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt;&gt;">当前目标位姿</output_port>
       <output_port name="current_wait_sec" default="{current_wait_sec}" type="double">当前等待秒数</output_port>
+    </Action>
+    <Action ID="UpdateManualNavGoal">
+      <input_port name="competition_port" default="{@referee_robotStatus}"
+                  type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;">CompetitionInfo port on blackboard</input_port>
+      <input_port name="our_side" default="{@our_side}" type="std::string">Current alliance side: red/blue/auto</input_port>
+      <input_port name="field_length_m" default="{@field_length_m}" type="double">Field length in meters</input_port>
+      <input_port name="field_width_m" default="{@field_width_m}" type="double">Field width in meters</input_port>
+      <input_port name="map_offset_x" default="{@manual_nav_map_offset_x}" type="double">Offset from remapped field x to map x in meters</input_port>
+      <input_port name="map_offset_y" default="{@manual_nav_map_offset_y}" type="double">Offset from remapped field y to map y in meters</input_port>
+      <input_port name="goal_yaw" default="{@manual_nav_goal_yaw}" type="double">Yaw of the latched manual nav goal in radians</input_port>
+      <output_port name="goal" default="{manual_nav_goal}"
+                   type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt;&gt;">Latched manual navigation goal in map frame</output_port>
+      <output_port name="goal_set" default="{manual_nav_goal_set}" type="bool">True when a manual navigation goal has been latched</output_port>
     </Action>
     <Action ID="WaitDuration">
       <input_port name="wait_sec" default="0.0" type="double">等待时长（秒）</input_port>

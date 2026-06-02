@@ -22,6 +22,17 @@
             <input_port name="wait_times" type="std::vector&lt;double, std::allocator&lt;double&gt; &gt;">每个航点的等待时长(秒)</input_port>
             <input_port name="waypoints" type="std::vector&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;, std::allocator&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt; &gt; &gt;">LoadWaypoints 输出的航点列表</input_port>
         </Action>
+        <Action ID="UpdateManualNavGoal">
+            <output_port name="goal_set" type="bool">True when a manual navigation goal has been latched</output_port>
+            <output_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Latched manual navigation goal in map frame</output_port>
+            <input_port name="competition_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
+            <input_port name="our_side" type="std::string" default="{@our_side}">Current alliance side: red/blue/auto</input_port>
+            <input_port name="field_length_m" type="double" default="{@field_length_m}">Field length in meters</input_port>
+            <input_port name="field_width_m" type="double" default="{@field_width_m}">Field width in meters</input_port>
+            <input_port name="map_offset_x" type="double" default="{@manual_nav_map_offset_x}">Offset from remapped field x to map x in meters</input_port>
+            <input_port name="map_offset_y" type="double" default="{@manual_nav_map_offset_y}">Offset from remapped field y to map y in meters</input_port>
+            <input_port name="goal_yaw" type="double" default="{@manual_nav_goal_yaw}">Yaw of the latched manual nav goal in radians</input_port>
+        </Action>
         <Condition ID="IsBlackboardBool">
             <input_port name="expected" type="bool" default="true">Expected value</input_port>
             <input_port name="value" type="bool" default="false">Blackboard boolean value</input_port>

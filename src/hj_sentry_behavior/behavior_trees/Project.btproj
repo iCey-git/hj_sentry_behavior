@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root BTCPP_format="4" project_name="Project">
-    <include path="rmul_2025.xml"/>
     <include path="rmuc_2026.xml"/>
     <include path="test_spin_nav_aim.xml"/>
     <!-- Description of Node Models (used by Groot) -->
@@ -74,6 +73,17 @@
             <input_port name="wp_idx" default="{route_wp_idx}" type="int">当前索引</input_port>
             <output_port name="current_goal" default="{current_goal}" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt;&gt;">当前目标位姿</output_port>
             <output_port name="current_wait_sec" default="{current_wait_sec}" type="double">当前等待秒数</output_port>
+        </Action>
+        <Action ID="UpdateManualNavGoal">
+            <input_port name="competition_port" default="{@referee_robotStatus}" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;">CompetitionInfo port on blackboard</input_port>
+            <input_port name="our_side" default="{@our_side}" type="std::string">Current alliance side: red/blue/auto</input_port>
+            <input_port name="field_length_m" default="{@field_length_m}" type="double">Field length in meters</input_port>
+            <input_port name="field_width_m" default="{@field_width_m}" type="double">Field width in meters</input_port>
+            <input_port name="map_offset_x" default="{@manual_nav_map_offset_x}" type="double">Offset from remapped field x to map x in meters</input_port>
+            <input_port name="map_offset_y" default="{@manual_nav_map_offset_y}" type="double">Offset from remapped field y to map y in meters</input_port>
+            <input_port name="goal_yaw" default="{@manual_nav_goal_yaw}" type="double">Yaw of the latched manual nav goal in radians</input_port>
+            <output_port name="goal" default="{manual_nav_goal}" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Latched manual navigation goal in map frame</output_port>
+            <output_port name="goal_set" default="{manual_nav_goal_set}" type="bool">True when a manual navigation goal has been latched</output_port>
         </Action>
         <Action ID="WaitDuration">
             <input_port name="wait_sec" default="0.0" type="double">等待时长（秒），&lt;=0 跳过</input_port>
