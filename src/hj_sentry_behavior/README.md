@@ -62,8 +62,8 @@ ros2 launch pb2025_sentry_behavior pb2025_sentry_behavior_launch.py
 - 行为树当前只把它用于两件事：`engage_enemy` 的停车判定，以及 `manage_posture` 的进攻姿态判定。
 - `state=1` 表示主摄跟踪中，`armor_name` 与 `distance` 有效。
 - `state=2` 表示全向感知发现目标，只会触发 `EnemyStopGate` 停车，不会让 `SentryPostureManager` 认为敌人可见。
-- `armor_name=1..6` 且 `state=1` 且 `distance <= 8.0m` 时，`EnemyStopGate` 会停车并切入攻击链路。
-- `armor_name=7` 前哨、`armor_name=8` 基地只会让 `SentryPostureManager` 在 `state=1` 且距离有效时认为目标可见，不会触发停车。
+- `armor_name=0..5` 且 `state=1` 且 `distance <= 8.0m` 时，`EnemyStopGate` 会停车并切入攻击链路。
+- `armor_name=6` 前哨、`armor_name=7` 基地只会让 `SentryPostureManager` 在 `state=1` 且距离有效时认为目标可见，不会触发停车。
 - 话题停更时继续沿用“最后一帧 + 超时失效”机制，不要求发布空消息清空。
 - 前哨站阶段切换仍然只看 `/competition_info.enemy_outpost_hp`，不由视觉输入直接驱动。
 

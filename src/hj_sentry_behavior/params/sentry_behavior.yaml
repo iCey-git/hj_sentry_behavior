@@ -22,23 +22,24 @@ bt_action_server:
 
 
     # 导航目标（格式: "x;y;yaw"）
-    supply_goal: "-0.8219258189201355;-6.722344398498535;0"
-    base_protect_goal: "4.406850814819336;-0.8306994438171387;0"
-    outpost_pressure_goal: "8.46983528137207;3.1363728046417236;0"
+    supply_goal: "-1.4208451509475708;-7.278378963470459;0"
+    base_protect_goal: "1.579305648803711;0.46397119760513306;0"
+    outpost_pressure_goal: "7.044892311096191;3.3530044555664062;0"
 
-    post_outpost_behavior_mode: "default_patrol"  # default_patrol / hold_point / alt_patrol
-    patrol_point_a_goal: "12.890176773071289;1.1806282997131348;0"
-    patrol_point_b_goal: "8.120878219604492;-3.140058994293213;0"
+    post_outpost_behavior_mode: "hold_point"  # default_patrol / hold_point / alt_patrol
+    patrol_point_a_goal: "12.4462156default_patrol29577637;1.2565665245056152;0"
+    patrol_point_b_goal: "12.3399658203125;-2.111288547515869;0"
     post_outpost_alt_point_a_goal: "10.530373573303223;2.9102365970611572;0"
     post_outpost_alt_point_b_goal: "8.303040504455566;-3.1416804790496826;0"
-    post_outpost_hold_goal: "11.39123249053955;2.5960257053375244;0"
-    enemy_outpost_gain_point: "12.43687629699707;3.2079238891601562;0"
+    post_outpost_hold_goal: "4.794981002807617;-2.0888168811798096;0"
+    enemy_outpost_gain_point: "4.794981002807617;-2.0888168811798096;0"
+    late_phase_goal: "5.563359260559082;-3.5610146522521973;0"
     single_goal_refresh_sec: 10.0
 
     # 补给参数
-    supply_ammo_min: 50                         # 弹药低于此值触发补给
-    supply_hp_min: 200                          # HP 低于此值触发补给
-    supply_hp_recover: 360                      # HP 恢复到此值才解除补给状态
+    supply_ammo_min: 30                         # 弹药低于此值触发补给
+    supply_hp_min: 150                          # HP 低于此值触发补给
+    supply_hp_recover: 380                      # HP 恢复到此值才解除补给状态
 
     # 区域边界
     supply_our_half_polygon: "8.798,4.567;5.648,-0.036;5.610,-1.430;6.754,-4.599;-3.758,-4.613;-3.632,1.631;3.980,1.861;6.382,5.331;8.557,5.384"
@@ -47,12 +48,12 @@ bt_action_server:
     rough_home_side_anchor: "1.4000000000000000;-7.4000000000000000;0"
     rough_highland_side_anchor: "5.6000000000000000;-7.4000000000000000;0"
     rough_direct_drive_polygon: "1.55,-6.46;4.33,-6.43;4.33,-8.33;1.52,-8.29"
-    rough_direct_drive_enabled: true # 开启则直接给底盘发速度 开环控制过颠簸路段
+    rough_direct_drive_enabled: false # 开启则直接给底盘发速度 开环控制过颠簸路段
     rough_cross_timeout_sec: 10.0
-    home_to_highland_vx: 2.0
+    home_to_highland_vx: 1.5
     home_to_highland_vy: 0.0
     home_to_highland_vyaw: 0.0
-    highland_to_home_vx: -2.0
+    highland_to_home_vx: -1.5
     highland_to_home_vy: 0.0
     highland_to_home_vyaw: 0.0
 
@@ -64,8 +65,8 @@ bt_action_server:
     posture_damage_window_sec: 3.0              # 掉血检测窗口
     posture_damage_threshold: 1                 # 警戒态窗口内任意掉血进入防御姿态
     posture_defense_hp_threshold: 200           # 低血移动回补给分界
-    posture_warning_hp_min: 200                 # 警戒血量下界
-    posture_warning_hp_max: 300                 # 警戒血量上界
+    posture_warning_hp_min: 100                 # 警戒血量下界
+    posture_warning_hp_max: 200                 # 警戒血量上界
     posture_enemy_stale_timeout_sec: 0.3        # 视觉敌人消息超时
     posture_enemy_max_distance: 8.0             # 进入进攻姿态的最大敌人距离
     posture_linger_sec: 5.0                     # 敌人/掉血条件消失后的姿态滞留时间
@@ -80,7 +81,7 @@ sentry_behavior_client:
 mapping_bag_recorder:
   ros__parameters:
     competition_topic: /competition_info
-    script_path: /home/hj/sentry_nav_26/record_mapping_bag.sh
-    start_game_state: 2
-    stop_game_state: 5
+    script_path: /home/hj/sentry_nav_26/record_match_text.sh
+    start_game_state: 6
+    stop_game_state: 7
     stop_timeout_sec: 20.0

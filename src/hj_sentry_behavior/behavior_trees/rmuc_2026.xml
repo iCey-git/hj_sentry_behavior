@@ -297,12 +297,6 @@
                           linger_sec="{@posture_linger_sec}"/>
   </BehaviorTree>
 
-  <!-- 压前哨 -->
-  <BehaviorTree ID="pressure_outpost">
-    <Sequence _while="@enemy_outpost_hp&gt;0">
-      <SubTree ID="hold_single_goal" single_goal="{@outpost_pressure_goal}"/>
-    </Sequence>
-  </BehaviorTree>
 
   <!-- 默认的高地双点巡逻 -->
   <BehaviorTree ID="patrol_by_phase">
@@ -314,46 +308,80 @@
     </KeepRunningUntilFailure>
   </BehaviorTree>
 
-  <!-- 前哨站击杀后 默认占点保持 -->
-  <BehaviorTree ID="post_outpost_hold">
-    <SubTree ID="hold_single_goal" single_goal="{@post_outpost_hold_goal}"/>
-  </BehaviorTree>
-
-  <!-- 前哨站击杀后 hold_point 模式的前 5 分钟抢占点 占领敌方增益区 -->
-  <BehaviorTree ID="post_outpost_gain">
-    <SubTree ID="hold_single_goal" single_goal="{@enemy_outpost_gain_point}"/>
-  </BehaviorTree>
-
-  <!-- 前哨站击杀后 备用双点巡逻 -->
-  <BehaviorTree ID="post_outpost_alt_patrol">
-    <KeepRunningUntilFailure>
-      <Sequence>
-        <SubTree ID="navigate_patrol_goal" single_goal="{@post_outpost_alt_point_a_goal}"/>
-        <SubTree ID="navigate_patrol_goal" single_goal="{@post_outpost_alt_point_b_goal}"/>
-      </Sequence>
-    </KeepRunningUntilFailure>
-  </BehaviorTree>
-
-  <!-- 前哨站击杀后行为选择 -->
-  <BehaviorTree ID="post_outpost_behavior">
-    <Fallback>
-      <Sequence>
-        <IsBlackboardString value="{@post_outpost_behavior_mode}"
-                           expected="hold_point"/>
-        <Fallback>
-          <Sequence _while="@our_outpost_hp&gt;0 &amp;&amp; @stage_remain_time&gt;=120">
-            <SubTree ID="post_outpost_gain"/>
-          </Sequence>
-          <SubTree ID="post_outpost_hold"/>
-        </Fallback>
-      </Sequence>
-      <Sequence>
-        <IsBlackboardString value="{@post_outpost_behavior_mode}"
-                           expected="alt_patrol"/>
-        <SubTree ID="post_outpost_alt_patrol"/>
-      </Sequence>
-      <SubTree ID="patrol_by_phase"/>
-    </Fallback>
+  <!-- 前期 hold 点: 不开陀螺 (chassis_gyro=0) -->
+  <BehaviorTree ID="hold_no_gyro">
+    <Sequence>
+      <PublishModeControl chassis_gyro="0"
+                          patrol_mode="2"
+                          power_mode="12"
+                          rough_road_active="{@rough_road_active}"
+                          rough_chassis_gyro="0"
+                          duration="0"
+                          topic_name="/mode_ctrl"/>
+      <RoughRoadSpeedControl rough_road_polygon="{@rough_road_polygon}"
+                             control_speed="false"
+                             publish_mode_control="true"
+                             map_frame="map"
+                             base_frame="base_footprint"/>
+      <ForceSuccess>
+        <Nav2PoseRoughRoad action_name="navigate_to_pose"
+                           goal_pose_topic="/goal_pose"
+                           goal="{single_goal}"
+                           rough_road_polygon="{@rough_road_polygon}"
+                           rough_direct_drive_polygon="{@rough_direct_drive_polygon}"
+                           rough_direct_drive_enabled="{@rough_direct_drive_enabled}"
+                           rough_home_side_anchor="{@rough_home_side_anchor}"
+                           rough_highland_side_anchor="{@rough_highland_side_anchor}"
+                           rough_cross_timeout_sec="{@rough_cross_timeout_sec}"
+                           home_to_highland_vx="{@home_to_highland_vx}"
+                           home_to_highland_vy="{@home_to_highland_vy}"
+                           home_to_highland_vyaw="{@home_to_highland_vyaw}"
+                           highland_to_home_vx="{@highland_to_home_vx}"
+                           highland_to_home_vy="{@highland_to_home_vy}"
+                           highland_to_home_vyaw="{@highland_to_home_vyaw}"
+                           cmd_vel_topic="cmd_vel"
+                           map_frame="map"
+                           base_frame="base_footprint"/>
+      </ForceSuccess>
+      <KeepRunningUntilFailure>
+        <Sequence>
+          <PublishModeControl chassis_gyro="0"
+                              patrol_mode="2"
+                              power_mode="12"
+                              rough_road_active="{@rough_road_active}"
+                              rough_chassis_gyro="0"
+                              duration="0"
+                              topic_name="/mode_ctrl"/>
+          <RoughRoadSpeedControl rough_road_polygon="{@rough_road_polygon}"
+                                 control_speed="false"
+                                 publish_mode_control="true"
+                                 map_frame="map"
+                                 base_frame="base_footprint"/>
+          <ForceSuccess>
+            <TickAfterTimeout timeout="{@single_goal_refresh_sec}">
+              <Nav2PoseRoughRoad action_name="navigate_to_pose"
+                                 goal_pose_topic="/goal_pose"
+                                 goal="{single_goal}"
+                                 rough_road_polygon="{@rough_road_polygon}"
+                                 rough_direct_drive_polygon="{@rough_direct_drive_polygon}"
+                                 rough_direct_drive_enabled="{@rough_direct_drive_enabled}"
+                                 rough_home_side_anchor="{@rough_home_side_anchor}"
+                                 rough_highland_side_anchor="{@rough_highland_side_anchor}"
+                                 rough_cross_timeout_sec="{@rough_cross_timeout_sec}"
+                                 home_to_highland_vx="{@home_to_highland_vx}"
+                                 home_to_highland_vy="{@home_to_highland_vy}"
+                                 home_to_highland_vyaw="{@home_to_highland_vyaw}"
+                                 highland_to_home_vx="{@highland_to_home_vx}"
+                                 highland_to_home_vy="{@highland_to_home_vy}"
+                                 highland_to_home_vyaw="{@highland_to_home_vyaw}"
+                                 cmd_vel_topic="cmd_vel"
+                                 map_frame="map"
+                                 base_frame="base_footprint"/>
+            </TickAfterTimeout>
+          </ForceSuccess>
+        </Sequence>
+      </KeepRunningUntilFailure>
+    </Sequence>
   </BehaviorTree>
 
   <!-- 主树: rmuc_2026  -->
@@ -389,14 +417,18 @@
             <!-- P3: 敌情响应  -->
             <SubTree ID="engage_enemy"/>
 
-            <!-- P4: 压前哨 -->
-            <SubTree ID="pressure_outpost"/>
-
-            <!-- P5: 保卫基地 -->
+            <!-- P4: 保卫基地 -->
             <SubTree ID="protect_base"/>
 
-            <!-- P6: 前哨站击杀后行为  -->
-            <SubTree ID="post_outpost_behavior"/>
+            <!-- P5: 时间分段行为 -->
+            <ReactiveFallback>
+              <!-- 前三分钟 (stage_remain_time > 240): 不开陀螺 -->
+              <Sequence _while="@stage_remain_time&gt;240">
+                <SubTree ID="hold_no_gyro" single_goal="{@outpost_pressure_goal}"/>
+              </Sequence>
+              <!-- 三分钟后: 开陀螺 -->
+              <SubTree ID="hold_single_goal" single_goal="{@late_phase_goal}"/>
+            </ReactiveFallback>
 
           </ReactiveFallback>
         </ReactiveSequence>

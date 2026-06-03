@@ -109,6 +109,7 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
   set_pose_parameter_to_blackboard("post_outpost_alt_point_b_goal", "5.5;-2.5;0");
   set_pose_parameter_to_blackboard("rough_home_side_anchor", "-0.9;-7.0;0");
   set_pose_parameter_to_blackboard("rough_highland_side_anchor", "8.0;-7.0;0");
+  set_pose_parameter_to_blackboard("late_phase_goal", "7.04;3.35;0");
   set_parameter_to_blackboard("single_goal_refresh_sec", rclcpp::ParameterValue(10.0));
   set_double_parameter_to_blackboard("rough_cross_timeout_sec", 6.0);
   set_double_parameter_to_blackboard("home_to_highland_vx", 0.8);

@@ -10,12 +10,12 @@ namespace pb2025_sentry_behavior
 
 inline bool isValidOmniPerceptionArmorName(uint8_t armor_name)
 {
-  return armor_name >= 1U && armor_name <= 8U;
+  return armor_name <= 7U;
 }
 
 inline bool isStopArmorName(uint8_t armor_name)
 {
-  return armor_name >= 1U && armor_name <= 6U;
+  return armor_name <= 5U;
 }
 
 inline bool isValidTrackedDistance(float distance)

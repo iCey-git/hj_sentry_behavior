@@ -15,7 +15,7 @@
 
 import os
 
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import get_package_prefix, get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable
 from launch.conditions import IfCondition
@@ -28,6 +28,8 @@ from nav2_common.launch import RewrittenYaml
 def generate_launch_description():
     # Get the package directory
     bringup_dir = get_package_share_directory("pb2025_sentry_behavior")
+    package_prefix = get_package_prefix("pb2025_sentry_behavior")
+    workspace_install_dir = os.path.dirname(package_prefix)
 
     # Create the launch configuration variables
     namespace = LaunchConfiguration("namespace")
@@ -54,6 +56,25 @@ def generate_launch_description():
     )
 
     colorized_output_envvar = SetEnvironmentVariable("RCUTILS_COLORIZED_OUTPUT", "1")
+
+    overlay_lib_dirs = [
+        os.path.join(package_prefix, "lib"),
+        os.path.join(workspace_install_dir, "robot_msgs", "lib"),
+        os.path.join(workspace_install_dir, "auto_aim_interfaces", "lib"),
+        os.path.join(workspace_install_dir, "btcpp_ros2_interfaces", "lib"),
+    ]
+    existing_overlay_lib_dirs = [
+        lib_dir for lib_dir in overlay_lib_dirs if os.path.isdir(lib_dir)
+    ]
+    current_ld_library_path = os.environ.get("LD_LIBRARY_PATH", "")
+    local_ld_library_path = os.pathsep.join(existing_overlay_lib_dirs)
+    if current_ld_library_path:
+        local_ld_library_path = (
+            f"{local_ld_library_path}{os.pathsep}{current_ld_library_path}"
+        )
+    ld_library_path_envvar = SetEnvironmentVariable(
+        "LD_LIBRARY_PATH", local_ld_library_path
+    )
 
     # Declare the launch arguments
     declare_namespace_cmd = DeclareLaunchArgument(
@@ -131,6 +152,7 @@ def generate_launch_description():
     # Set environment variables
     ld.add_action(stdout_linebuf_envvar)
     ld.add_action(colorized_output_envvar)
+    ld.add_action(ld_library_path_envvar)
 
     # Declare the launch options
     ld.add_action(declare_namespace_cmd)

@@ -15,8 +15,8 @@ class MappingBagRecorder(Node):
         super().__init__("mapping_bag_recorder")
 
         self.declare_parameter("competition_topic", "/competition_info")
-        self.declare_parameter("script_path", "/home/hj/sentry_nav_26/record_mapping_bag.sh")
-        self.declare_parameter("start_game_state", 2)
+        self.declare_parameter("script_path", "/home/hj/sentry_nav_26/record_match_text.sh")
+        self.declare_parameter("start_game_state", 3)
         self.declare_parameter("stop_game_state", 5)
         self.declare_parameter("stop_timeout_sec", 20.0)
 
@@ -37,8 +37,13 @@ class MappingBagRecorder(Node):
         )
 
         self.get_logger().info(
-            "mapping bag recorder ready, start_state=%d stop_state=%d script=%s"
-            % (self._start_game_state, self._stop_game_state, self._script_path)
+            "match text recorder ready, topic=%s start_state=%d stop_state=%d script=%s"
+            % (
+                self._competition_topic,
+                self._start_game_state,
+                self._stop_game_state,
+                self._script_path,
+            )
         )
 
     def _competition_callback(self, msg: CompetitionInfo) -> None:

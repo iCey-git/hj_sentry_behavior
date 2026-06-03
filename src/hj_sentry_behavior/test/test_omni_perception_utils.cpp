@@ -19,7 +19,7 @@ robot_msgs::msg::OmniPerception makeTargetInfo(int8_t state, uint8_t armor_name,
 
 TEST(OmniPerceptionUtilsTest, StopGateAcceptsTrackedCombatTargetWithinDistance)
 {
-  const auto msg = makeTargetInfo(1, 6, 4.0F);
+  const auto msg = makeTargetInfo(1, 5, 4.0F);
 
   EXPECT_TRUE(pb2025_sentry_behavior::shouldStopForTargetInfo(msg, 8.0F));
   EXPECT_TRUE(pb2025_sentry_behavior::isEnemyVisibleForPosture(msg, 8.0F));
@@ -27,7 +27,7 @@ TEST(OmniPerceptionUtilsTest, StopGateAcceptsTrackedCombatTargetWithinDistance)
 
 TEST(OmniPerceptionUtilsTest, StopGateRejectsTrackedOutpostButPostureKeepsItVisible)
 {
-  const auto msg = makeTargetInfo(1, 7, 4.0F);
+  const auto msg = makeTargetInfo(1, 6, 4.0F);
 
   EXPECT_FALSE(pb2025_sentry_behavior::shouldStopForTargetInfo(msg, 8.0F));
   EXPECT_TRUE(pb2025_sentry_behavior::isEnemyVisibleForPosture(msg, 8.0F));
@@ -51,7 +51,7 @@ TEST(OmniPerceptionUtilsTest, InvalidStateDoesNotTriggerStopOrPosture)
 
 TEST(OmniPerceptionUtilsTest, InvalidArmorDoesNotTriggerStopOrPosture)
 {
-  const auto msg = makeTargetInfo(1, 9, 4.0F);
+  const auto msg = makeTargetInfo(1, 8, 4.0F);
 
   EXPECT_FALSE(pb2025_sentry_behavior::shouldStopForTargetInfo(msg, 8.0F));
   EXPECT_FALSE(pb2025_sentry_behavior::isEnemyVisibleForPosture(msg, 8.0F));
