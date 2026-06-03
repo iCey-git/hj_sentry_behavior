@@ -1,5 +1,10 @@
 <root BTCPP_format="4">
     <TreeNodesModel>
+        <Action ID="AnnounceState">
+            <input_port name="bb_key" type="std::string" default="announced_state">Blackboard key used to store the last announced state</input_port>
+            <input_port name="message" type="std::string">Message printed once when the state changes</input_port>
+            <input_port name="state" type="std::string">Unique state id used to suppress duplicate logs</input_port>
+        </Action>
         <Condition ID="CalculateAttackPose">
             <input_port name="costmap_port" type="nav_msgs::msg::OccupancyGrid_&lt;std::allocator&lt;void&gt; &gt;" default="{@nav_globalCostmap}">GlobalCostmap port on blackboard</input_port>
             <input_port name="tracker_port" type="auto_aim_interfaces::msg::Target_&lt;std::allocator&lt;void&gt; &gt;" default="{@tracker_target}">Vision target port on blackboard</input_port>
@@ -15,6 +20,13 @@
             <input_port name="max_distance" type="float" default="8.000000">Distance to enemy target</input_port>
             <input_port name="key_port" type="robot_msgs::msg::OmniPerception_&lt;std::allocator&lt;void&gt; &gt;" default="{@target_info}">OmniPerception target info on blackboard</input_port>
         </Condition>
+        <Action ID="FindReachableGoalInArea">
+            <input_port name="costmap_port" type="nav_msgs::msg::OccupancyGrid_&lt;std::allocator&lt;void&gt; &gt;" default="{@nav_globalCostmap}">GlobalCostmap port on blackboard</input_port>
+            <output_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="{reachable_goal}">Output: nearest reachable goal pose within the area</output_port>
+            <input_port name="radius" type="double" default="2.000000">Search radius in meters</input_port>
+            <input_port name="cost_threshold" type="int" default="50">Max costmap cost for a feasible point</input_port>
+            <input_port name="center" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Center of search area. Fill with format `x;y;yaw`</input_port>
+        </Action>
         <Action ID="GetCurrentWaypoint">
             <output_port name="current_goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">当前目标位姿</output_port>
             <output_port name="current_wait_sec" type="double">当前航点等待秒数</output_port>
@@ -23,8 +35,8 @@
             <input_port name="waypoints" type="std::vector&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;, std::allocator&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt; &gt; &gt;">LoadWaypoints 输出的航点列表</input_port>
         </Action>
         <Condition ID="IsBlackboardBool">
-            <input_port name="expected" type="bool" default="true">Expected value</input_port>
-            <input_port name="value" type="bool" default="false">Blackboard boolean value</input_port>
+            <input_port name="expected" type="bool" default="true">Expected bool value</input_port>
+            <input_port name="value" type="bool" default="false">Blackboard bool value</input_port>
         </Condition>
         <Condition ID="IsBlackboardString">
             <input_port name="expected" type="std::string" default="">Expected string value</input_port>
@@ -39,19 +51,7 @@
             <input_port name="expected_game_progress" type="int" default="4">Expected game progress stage</input_port>
             <input_port name="key_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_gameStatus}">CompetitionInfo port on blackboard</input_port>
         </Condition>
-        <Condition ID="IsNearPose">
-            <input_port name="base_frame" type="std::string" default="base_footprint">Robot base frame</input_port>
-            <input_port name="map_frame" type="std::string" default="map">Map frame</input_port>
-            <input_port name="position_tolerance" type="double" default="0.450000">XY distance tolerance in meters</input_port>
-            <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Target pose in map frame</input_port>
-        </Condition>
-        <Condition ID="IsRfidDetected">
-            <input_port name="friendly_supply_zone_exchange" type="bool" default="false">己方与兑换区重叠的补给区</input_port>
-            <input_port name="friendly_supply_zone_non_exchange" type="bool" default="false">己方与兑换区不重叠的补给区 / RMUL 补给区</input_port>
-            <input_port name="center_gain_point" type="bool" default="false">中心增益点（仅 RMUL 适用）</input_port>
-            <input_port name="friendly_fortress_gain_point" type="bool" default="false">己方堡垒增益点</input_port>
-            <input_port name="key_port" type="robot_msgs::msg::RfidStatus_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_rfidStatus}">RfidStatus port on blackboard</input_port>
-        </Condition>
+        
         <Condition ID="IsStatusOK">
             <input_port name="ammo_min" type="int" default="0">Lower then minimum ammo will return FAILURE</input_port>
             <input_port name="hp_recover" type="int" default="600">HP threshold to stop retreat (full HP)</input_port>
@@ -112,6 +112,11 @@
             <input_port name="rough_chassis_gyro" type="int" default="0">Chassis gyro value on rough road</input_port>
             <input_port name="topic_name" type="std::string" default="__default__placeholder__">Topic name</input_port>
         </Action>
+        <Action ID="PublishPostureCmd">
+            <input_port name="posture" type="int" default="3">1: attack, 2: defense, 3: mobile posture</input_port>
+            <input_port name="duration" type="std::chrono::milliseconds" default="">Publish then sleep duration in milliseconds</input_port>
+            <input_port name="topic_name" type="std::string" default="__default__placeholder__">Topic name</input_port>
+        </Action>
         <Action ID="PublishTwist">
             <input_port name="v_y" type="double" default="0.000000">Linear Y velocity (m/s)</input_port>
             <input_port name="v_yaw" type="double" default="0.000000">Angular Z velocity (rad/s)</input_port>
@@ -168,10 +173,6 @@
             <input_port name="enemy_max_distance" type="double" default="8.000000">Max enemy distance for attack posture</input_port>
             <input_port name="enemy_port" type="robot_msgs::msg::OmniPerception_&lt;std::allocator&lt;void&gt; &gt;" default="{@target_info}">OmniPerception target info on blackboard</input_port>
             <input_port name="topic_name" type="std::string" default="/sentry_posture_cmd">Posture command topic</input_port>
-        </Action>
-        <Action ID="SetBlackboardBool">
-            <input_port name="set_to" type="bool" default="true">Value to write</input_port>
-            <output_port name="value" type="bool">Blackboard boolean value to write</output_port>
         </Action>
         <Decorator ID="TickAfterTimeout">
             <input_port name="timeout" type="float">time in s to wait before ticking child again</input_port>

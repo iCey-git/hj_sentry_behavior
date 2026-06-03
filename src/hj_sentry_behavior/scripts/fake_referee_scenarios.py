@@ -3,7 +3,7 @@ import copy
 
 import rclpy
 from rclpy.node import Node
-from robot_msgs.msg import CompetitionInfo, RfidStatus
+from robot_msgs.msg import CompetitionInfo
 
 
 SCENARIOS = {
@@ -51,7 +51,6 @@ SCENARIOS = {
         "our_base_hp": 5000,
         "enemy_outpost_hp": 1500,
         "stage_remain_time": 260,
-        "friendly_supply_zone_non_exchange": True,
     },
     # Base HP below base_protect_hp_threshold: protect_base should take priority.
     "protect_base": {
@@ -70,7 +69,6 @@ SCENARIOS = {
         "our_base_hp": 5000,
         "enemy_outpost_hp": 0,
         "stage_remain_time": 180,
-        "center_gain_point": True,
     },
     # HP == 0 now falls through the same low-status path as other bad states.
     "sentry_dead": {
@@ -92,7 +90,6 @@ class FakeRefereeScenarios(Node):
         self.declare_parameter("publish_rate", 10.0)
 
         self.comp_pub = self.create_publisher(CompetitionInfo, "/competition_info", 10)
-        self.rfid_pub = self.create_publisher(RfidStatus, "/rfid_status", 10)
 
         rate = float(self.get_parameter("publish_rate").value)
         self.timer = self.create_timer(1.0 / rate, self.timer_callback)
@@ -137,20 +134,6 @@ class FakeRefereeScenarios(Node):
         comp.stage_remain_time = int(data.get("stage_remain_time", 300))
         self.comp_pub.publish(comp)
 
-        rfid = RfidStatus()
-        rfid.friendly_fortress_gain_point = self._rfid_value(data, "friendly_fortress_gain_point")
-        rfid.friendly_supply_zone_non_exchange = self._rfid_value(
-            data, "friendly_supply_zone_non_exchange"
-        )
-        rfid.friendly_supply_zone_exchange = self._rfid_value(
-            data, "friendly_supply_zone_exchange"
-        )
-        rfid.center_gain_point = self._rfid_value(data, "center_gain_point")
-        self.rfid_pub.publish(rfid)
-
-    @staticmethod
-    def _rfid_value(data, key):
-        return RfidStatus.DETECTED if bool(data.get(key, False)) else RfidStatus.NOT_DETECTED
 
 
 def main(args=None):

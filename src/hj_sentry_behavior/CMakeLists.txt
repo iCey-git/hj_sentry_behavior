@@ -39,9 +39,6 @@ rclcpp_components_register_node(action_client
 ament_auto_add_library(is_game_status SHARED plugins/condition/is_game_status.cpp)
 list(APPEND plugin_libs is_game_status)
 
-ament_auto_add_library(is_rfid_detected SHARED plugins/condition/is_rfid_detected.cpp)
-list(APPEND plugin_libs is_rfid_detected)
-
 ament_auto_add_library(is_status_ok SHARED plugins/condition/is_status_ok.cpp)
 list(APPEND plugin_libs is_status_ok)
 

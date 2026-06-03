@@ -24,7 +24,6 @@
 #include "pb2025_sentry_behavior/custom_types.hpp"
 #include "robot_msgs/msg/competition_info.hpp"
 #include "robot_msgs/msg/omni_perception.hpp"
-#include "robot_msgs/msg/rfid_status.hpp"
 namespace pb2025_sentry_behavior
 {
 
@@ -171,7 +170,6 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
     });
   subscriptions_.push_back(competition_sub);
 
-  subscribe<robot_msgs::msg::RfidStatus>("/rfid_status", "referee_rfidStatus");
 
   auto detector_qos = rclcpp::SensorDataQoS();
   auto detector_sub = node()->create_subscription<auto_aim_interfaces::msg::Armors>(

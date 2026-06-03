@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from robot_msgs.msg import CompetitionInfo, RfidStatus
+from robot_msgs.msg import CompetitionInfo
 
 
 class FakeReferee(Node):
@@ -15,8 +15,6 @@ class FakeReferee(Node):
 
         self.comp_pub = self.create_publisher(
             CompetitionInfo, '/competition_info', 10)
-        self.rfid_pub = self.create_publisher(
-            RfidStatus, '/rfid_status', 10)
 
         rate = self.get_parameter('publish_rate').value
         self.timer = self.create_timer(1.0 / rate, self.timer_callback)
@@ -40,12 +38,6 @@ class FakeReferee(Node):
         comp.stage_remain_time = int(stage_remain_time)
         self.comp_pub.publish(comp)
 
-        rfid = RfidStatus()
-        rfid.friendly_fortress_gain_point = RfidStatus.NOT_DETECTED
-        rfid.friendly_supply_zone_non_exchange = RfidStatus.NOT_DETECTED
-        rfid.friendly_supply_zone_exchange = RfidStatus.NOT_DETECTED
-        rfid.center_gain_point = RfidStatus.NOT_DETECTED
-        self.rfid_pub.publish(rfid)
 
 
 def main(args=None):

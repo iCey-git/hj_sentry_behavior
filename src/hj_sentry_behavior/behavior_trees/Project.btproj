@@ -19,13 +19,7 @@
             <input_port name="expected_game_progress" default="4" type="int">Expected game progress stage</input_port>
             <input_port name="key_port" default="{@referee_gameStatus}" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;">CompetitionInfo port on blackboard</input_port>
         </Condition>
-        <Condition ID="IsRfidDetected">
-            <input_port name="friendly_supply_zone_exchange" default="false" type="bool">己方与兑换区重叠的补给区</input_port>
-            <input_port name="friendly_supply_zone_non_exchange" default="false" type="bool">己方与兑换区不重叠的补给区 / RMUL 补给区</input_port>
-            <input_port name="center_gain_point" default="false" type="bool">中心增益点（仅 RMUL 适用）</input_port>
-            <input_port name="friendly_fortress_gain_point" default="false" type="bool">己方堡垒增益点</input_port>
-            <input_port name="key_port" default="{@referee_rfidStatus}" type="robot_msgs::msg::RfidStatus_&lt;std::allocator&lt;void&gt; &gt;">RfidStatus port on blackboard</input_port>
-        </Condition>
+        
         <Condition ID="IsStatusOK">
             <input_port name="ammo_min" default="0" type="int">Lower then minimum ammo will return FAILURE</input_port>
             <input_port name="hp_min" default="200" type="int">HP threshold to start retreat</input_port>
