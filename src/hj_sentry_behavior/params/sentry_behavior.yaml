@@ -34,7 +34,7 @@ bt_action_server:
     post_outpost_hold_goal: "11.39123249053955;2.5960257053375244;0"
     enemy_outpost_gain_point: "12.43687629699707;3.2079238891601562;0"
     single_goal_refresh_sec: 10.0
-    our_side: "red"                           # red / blue / auto(auto 预留，当前未实现)
+    our_side: "blue"                           # red / blue / auto(auto 预留，当前未实现)
     field_length_m: 28.0
     field_width_m: 15.0
     manual_nav_map_offset_x: -3.68
@@ -65,16 +65,11 @@ bt_action_server:
     # 保卫基地参数
     base_protect_hp_threshold: 1500             # 我方基地 HP 低于此值则切入守基地模式
 
-    # 姿态切换参数 1=进攻, 2=防御, 3=移动
+    # 姿态切换参数 1=进攻, 3=移动
     posture_cooldown_sec: 5.0                   # 每次切换姿态后的冷却时间
-    posture_damage_window_sec: 3.0              # 掉血检测窗口
-    posture_damage_threshold: 1                 # 警戒态窗口内任意掉血进入防御姿态
-    posture_defense_hp_threshold: 200           # 低血移动回补给分界
-    posture_warning_hp_min: 200                 # 警戒血量下界
-    posture_warning_hp_max: 300                 # 警戒血量上界
     posture_enemy_stale_timeout_sec: 0.3        # 视觉敌人消息超时
     posture_enemy_max_distance: 8.0             # 进入进攻姿态的最大敌人距离
-    posture_linger_sec: 5.0                     # 敌人/掉血条件消失后的姿态滞留时间
+    posture_linger_sec: 5.0                     # 敌人消失后的进攻姿态滞留时间
 
 sentry_behavior_client:
   ros__parameters:

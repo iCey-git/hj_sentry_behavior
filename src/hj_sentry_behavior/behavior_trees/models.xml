@@ -22,17 +22,6 @@
             <input_port name="wait_times" type="std::vector&lt;double, std::allocator&lt;double&gt; &gt;">每个航点的等待时长(秒)</input_port>
             <input_port name="waypoints" type="std::vector&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;, std::allocator&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt; &gt; &gt;">LoadWaypoints 输出的航点列表</input_port>
         </Action>
-        <Action ID="UpdateManualNavGoal">
-            <output_port name="goal_set" type="bool">True when a manual navigation goal has been latched</output_port>
-            <output_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Latched manual navigation goal in map frame</output_port>
-            <input_port name="competition_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
-            <input_port name="our_side" type="std::string" default="{@our_side}">Current alliance side: red/blue/auto</input_port>
-            <input_port name="field_length_m" type="double" default="{@field_length_m}">Field length in meters</input_port>
-            <input_port name="field_width_m" type="double" default="{@field_width_m}">Field width in meters</input_port>
-            <input_port name="map_offset_x" type="double" default="{@manual_nav_map_offset_x}">Offset from remapped field x to map x in meters</input_port>
-            <input_port name="map_offset_y" type="double" default="{@manual_nav_map_offset_y}">Offset from remapped field y to map y in meters</input_port>
-            <input_port name="goal_yaw" type="double" default="{@manual_nav_goal_yaw}">Yaw of the latched manual nav goal in radians</input_port>
-        </Action>
         <Condition ID="IsBlackboardBool">
             <input_port name="expected" type="bool" default="true">Expected value</input_port>
             <input_port name="value" type="bool" default="false">Blackboard boolean value</input_port>
@@ -172,23 +161,13 @@
             <input_port name="action_name" type="std::string" default="">Action server name</input_port>
         </Action>
         <Action ID="SentryPostureManager">
-            <input_port name="map_frame" type="std::string" default="map">Map frame</input_port>
-            <input_port name="enemy_outpost_hp" type="int" default="{@enemy_outpost_hp}">Enemy outpost HP</input_port>
-            <input_port name="topic_name" type="std::string" default="/sentry_posture_cmd">Posture command topic</input_port>
-            <input_port name="enemy_port" type="robot_msgs::msg::OmniPerception_&lt;std::allocator&lt;void&gt; &gt;" default="{@target_info}">OmniPerception target info on blackboard</input_port>
-            <input_port name="enemy_max_distance" type="double" default="8.000000">Max enemy distance for attack posture</input_port>
-            <input_port name="enemy_rx_time_sec" type="double" default="{@target_info_rx_time_sec}">Last receive time of target_info in ROS time seconds</input_port>
-            <input_port name="enemy_stale_timeout_sec" type="double" default="0.300000">Enemy message stale timeout</input_port>
-            <input_port name="defense_hp_threshold" type="int" default="200">HP threshold for defense posture</input_port>
-            <input_port name="status_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
-            <input_port name="cooldown_sec" type="double" default="5.000000">Minimum seconds between posture switches</input_port>
-            <input_port name="damage_threshold" type="int" default="80">HP drop threshold in damage window</input_port>
-            <input_port name="warning_hp_max" type="int" default="300">Upper bound of warning HP range</input_port>
-            <input_port name="base_frame" type="std::string" default="base_footprint">Robot base frame</input_port>
-            <input_port name="damage_window_sec" type="double" default="3.000000">HP drop detection window</input_port>
-            <input_port name="highland_polygon" type="std::string" default="{@highland_polygon}">Central highland polygon</input_port>
-            <input_port name="warning_hp_min" type="int" default="200">Lower bound of warning HP range</input_port>
             <input_port name="linger_sec" type="double" default="2.000000">Posture condition linger time</input_port>
+            <input_port name="cooldown_sec" type="double" default="5.000000">Minimum seconds between posture switches</input_port>
+            <input_port name="enemy_stale_timeout_sec" type="double" default="0.300000">Enemy message stale timeout</input_port>
+            <input_port name="enemy_rx_time_sec" type="double" default="{@target_info_rx_time_sec}">Last receive time of target_info in ROS time seconds</input_port>
+            <input_port name="enemy_max_distance" type="double" default="8.000000">Max enemy distance for attack posture</input_port>
+            <input_port name="enemy_port" type="robot_msgs::msg::OmniPerception_&lt;std::allocator&lt;void&gt; &gt;" default="{@target_info}">OmniPerception target info on blackboard</input_port>
+            <input_port name="topic_name" type="std::string" default="/sentry_posture_cmd">Posture command topic</input_port>
         </Action>
         <Action ID="SetBlackboardBool">
             <input_port name="set_to" type="bool" default="true">Value to write</input_port>
@@ -197,6 +176,17 @@
         <Decorator ID="TickAfterTimeout">
             <input_port name="timeout" type="float">time in s to wait before ticking child again</input_port>
         </Decorator>
+        <Action ID="UpdateManualNavGoal">
+            <output_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="{manual_nav_goal}">Latched manual navigation goal in map frame</output_port>
+            <input_port name="map_offset_x" type="double" default="0.000000">Offset from remapped field x to map x in meters</input_port>
+            <input_port name="field_width_m" type="double" default="15.000000">Field width in meters</input_port>
+            <input_port name="goal_yaw" type="double" default="0.000000">Yaw of the latched manual nav goal in radians</input_port>
+            <input_port name="map_offset_y" type="double" default="0.000000">Offset from remapped field y to map y in meters</input_port>
+            <input_port name="field_length_m" type="double" default="28.000000">Field length in meters</input_port>
+            <input_port name="our_side" type="std::string" default="{@our_side}">Current alliance side: red/blue/auto</input_port>
+            <output_port name="goal_set" type="bool" default="{manual_nav_goal_set}">True when a manual navigation goal has been latched</output_port>
+            <input_port name="competition_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
+        </Action>
         <Action ID="WaitDuration">
             <input_port name="wait_sec" type="double" default="0.000000">等待时长（秒）。&lt;=0 时跳过等待直接返回 SUCCESS</input_port>
         </Action>

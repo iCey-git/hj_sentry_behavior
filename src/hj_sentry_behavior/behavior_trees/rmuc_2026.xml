@@ -257,38 +257,20 @@
 
   <!-- 锁存式手发点分支：一旦收到点，就持续占据该点，直到新点覆盖 -->
   <BehaviorTree ID="manual_nav_latched">
-    <Sequence>
-      <UpdateManualNavGoal competition_port="{@referee_robotStatus}"
-                           our_side="{@our_side}"
-                           field_length_m="{@field_length_m}"
-                           field_width_m="{@field_width_m}"
-                           map_offset_x="{@manual_nav_map_offset_x}"
-                           map_offset_y="{@manual_nav_map_offset_y}"
-                           goal_yaw="{@manual_nav_goal_yaw}"
-                           goal="{manual_nav_goal}"
-                           goal_set="{manual_nav_goal_set}"/>
+    <ReactiveSequence>
+      <IsBlackboardBool value="{manual_nav_goal_set}" expected="true"/>
       <SubTree ID="hold_single_goal" single_goal="{manual_nav_goal}"/>
-    </Sequence>
+    </ReactiveSequence>
   </BehaviorTree>
 
-  <!-- 姿态管理：/sentry_posture_cmd, 1=进攻, 2=防御, 3=移动 -->
+  <!-- 姿态管理：/sentry_posture_cmd, 1=进攻, 3=移动 -->
   <BehaviorTree ID="manage_posture">
     <SentryPostureManager topic_name="/sentry_posture_cmd"
-                          status_port="{@referee_robotStatus}"
                           enemy_port="{@target_info}"
                           enemy_rx_time_sec="{@target_info_rx_time_sec}"
                           enemy_max_distance="{@posture_enemy_max_distance}"
                           enemy_stale_timeout_sec="{@posture_enemy_stale_timeout_sec}"
                           cooldown_sec="{@posture_cooldown_sec}"
-                          damage_window_sec="{@posture_damage_window_sec}"
-                          damage_threshold="{@posture_damage_threshold}"
-                          defense_hp_threshold="{@posture_defense_hp_threshold}"
-                          warning_hp_min="{@posture_warning_hp_min}"
-                          warning_hp_max="{@posture_warning_hp_max}"
-                          enemy_outpost_hp="{@enemy_outpost_hp}"
-                          highland_polygon="{@highland_polygon}"
-                          map_frame="map"
-                          base_frame="base_footprint"
                           linger_sec="{@posture_linger_sec}"/>
   </BehaviorTree>
 
@@ -372,6 +354,19 @@
                                  map_frame="map"
                                  base_frame="base_footprint"/>
 
+          <!-- 每 tick 捕获 /competition_info 的手发点，即使当前被补给或敌情分支抢占。 -->
+          <ForceSuccess>
+            <UpdateManualNavGoal competition_port="{@referee_robotStatus}"
+                                 our_side="{@our_side}"
+                                 field_length_m="{@field_length_m}"
+                                 field_width_m="{@field_width_m}"
+                                 map_offset_x="{@manual_nav_map_offset_x}"
+                                 map_offset_y="{@manual_nav_map_offset_y}"
+                                 goal_yaw="{@manual_nav_goal_yaw}"
+                                 goal="{manual_nav_goal}"
+                                 goal_set="{manual_nav_goal_set}"/>
+          </ForceSuccess>
+
           <!--  策略优先级  -->
           <ReactiveFallback>
 
@@ -435,6 +430,10 @@
       <input_port name="value" default="" type="std::string">Blackboard string value</input_port>
       <input_port name="expected" default="" type="std::string">Expected string value</input_port>
     </Condition>
+    <Condition ID="IsBlackboardBool">
+      <input_port name="value" default="false" type="bool">Blackboard bool value</input_port>
+      <input_port name="expected" default="true" type="bool">Expected bool value</input_port>
+    </Condition>
     <!-- Actions -->
     <Action ID="Nav2Pose">
       <input_port name="goal" default="0;0;0"
@@ -487,23 +486,12 @@
     </Action>
     <Action ID="SentryPostureManager">
       <input_port name="topic_name" default="/sentry_posture_cmd" type="std::string">Posture command topic</input_port>
-      <input_port name="status_port" default="{@referee_robotStatus}"
-                  type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;">CompetitionInfo port on blackboard</input_port>
       <input_port name="enemy_port" default="{@target_info}"
                   type="robot_msgs::msg::OmniPerception_&lt;std::allocator&lt;void&gt; &gt;">OmniPerception target info on blackboard</input_port>
       <input_port name="enemy_rx_time_sec" default="{@target_info_rx_time_sec}" type="double">Last receive time of target_info</input_port>
       <input_port name="enemy_max_distance" default="8.0" type="double">Max enemy distance for attack posture</input_port>
       <input_port name="enemy_stale_timeout_sec" default="0.3" type="double">Enemy message stale timeout</input_port>
       <input_port name="cooldown_sec" default="5.0" type="double">Minimum seconds between posture switches</input_port>
-      <input_port name="damage_window_sec" default="3.0" type="double">HP drop detection window</input_port>
-      <input_port name="damage_threshold" default="80" type="int">HP drop threshold in damage window</input_port>
-      <input_port name="defense_hp_threshold" default="200" type="int">HP threshold for defense posture</input_port>
-      <input_port name="warning_hp_min" default="200" type="int">Lower bound of warning HP range</input_port>
-      <input_port name="warning_hp_max" default="300" type="int">Upper bound of warning HP range</input_port>
-      <input_port name="enemy_outpost_hp" default="{@enemy_outpost_hp}" type="int">Enemy outpost HP</input_port>
-      <input_port name="highland_polygon" default="{@highland_polygon}" type="std::string">Central highland polygon</input_port>
-      <input_port name="map_frame" default="map" type="std::string">Map frame</input_port>
-      <input_port name="base_frame" default="base_footprint" type="std::string">Robot base frame</input_port>
       <input_port name="linger_sec" default="2.0" type="double">Posture condition linger time</input_port>
     </Action>
     <Action ID="PublishTwist">

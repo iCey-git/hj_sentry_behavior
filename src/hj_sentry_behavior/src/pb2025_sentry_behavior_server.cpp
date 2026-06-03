@@ -139,11 +139,6 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
   set_parameter_to_blackboard("highland_polygon", rclcpp::ParameterValue(std::string{}));
   set_parameter_to_blackboard("base_protect_hp_threshold", rclcpp::ParameterValue(1500));
   set_double_parameter_to_blackboard("posture_cooldown_sec", 5.0);
-  set_double_parameter_to_blackboard("posture_damage_window_sec", 3.0);
-  set_parameter_to_blackboard("posture_damage_threshold", rclcpp::ParameterValue(1));
-  set_parameter_to_blackboard("posture_defense_hp_threshold", rclcpp::ParameterValue(200));
-  set_parameter_to_blackboard("posture_warning_hp_min", rclcpp::ParameterValue(200));
-  set_parameter_to_blackboard("posture_warning_hp_max", rclcpp::ParameterValue(300));
   set_double_parameter_to_blackboard("posture_enemy_stale_timeout_sec", 0.3);
   set_double_parameter_to_blackboard("posture_enemy_max_distance", 8.0);
   set_double_parameter_to_blackboard("posture_linger_sec", 2.0);

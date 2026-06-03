@@ -54,6 +54,9 @@ list(APPEND plugin_libs enemy_stop_gate)
 ament_auto_add_library(is_blackboard_string SHARED plugins/condition/is_blackboard_string.cpp)
 list(APPEND plugin_libs is_blackboard_string)
 
+ament_auto_add_library(is_blackboard_bool SHARED plugins/condition/is_blackboard_bool.cpp)
+list(APPEND plugin_libs is_blackboard_bool)
+
 ####### Actions #######
 ament_auto_add_library(nav2_pose SHARED plugins/action/nav2_pose.cpp)
 list(APPEND plugin_libs nav2_pose)
