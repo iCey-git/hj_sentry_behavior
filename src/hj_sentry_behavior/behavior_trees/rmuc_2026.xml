@@ -263,9 +263,10 @@
     </ReactiveSequence>
   </BehaviorTree>
 
-  <!-- 姿态管理：/sentry_posture_cmd, 1=进攻, 3=移动 -->
+  <!-- 姿态管理：/sentry_posture_cmd, 1=进攻, 2=防御 -->
   <BehaviorTree ID="manage_posture">
     <SentryPostureManager topic_name="/sentry_posture_cmd"
+                          status_port="{@referee_robotStatus}"
                           enemy_port="{@target_info}"
                           enemy_rx_time_sec="{@target_info_rx_time_sec}"
                           enemy_max_distance="{@posture_enemy_max_distance}"
@@ -377,7 +378,7 @@
             <SubTree ID="engage_enemy"/>
 
             <!-- P3: 锁存式手发点 -->
-            <SubTree ID="manual_nav_latched"/>
+            <SubTree ID="manual_nav_latched" manual_nav_goal="{@manual_nav_goal}" manual_nav_goal_set="{@manual_nav_goal_set}"/>
 
             <!-- P4: 压前哨 -->
             <SubTree ID="pressure_outpost"/>
@@ -486,6 +487,8 @@
     </Action>
     <Action ID="SentryPostureManager">
       <input_port name="topic_name" default="/sentry_posture_cmd" type="std::string">Posture command topic</input_port>
+      <input_port name="status_port" default="{@referee_robotStatus}"
+                  type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;">CompetitionInfo port on blackboard</input_port>
       <input_port name="enemy_port" default="{@target_info}"
                   type="robot_msgs::msg::OmniPerception_&lt;std::allocator&lt;void&gt; &gt;">OmniPerception target info on blackboard</input_port>
       <input_port name="enemy_rx_time_sec" default="{@target_info_rx_time_sec}" type="double">Last receive time of target_info</input_port>

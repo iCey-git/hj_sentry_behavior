@@ -26,7 +26,7 @@ public:
 
 private:
   static constexpr uint8_t kAttackPosture = 1;
-  static constexpr uint8_t kMovePosture = 3;
+  static constexpr uint8_t kDefensePosture = 2;
 
   struct Config
   {
@@ -48,7 +48,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr posture_pub_;
   std::string current_topic_;
 
-  uint8_t current_posture_ = kMovePosture;
+  uint8_t current_posture_ = kDefensePosture;
   double last_switch_time_sec_ = -1000000.0;
   double attack_linger_until_sec_ = 0.0;
 

@@ -2,6 +2,8 @@
 
 #include <stdexcept>
 
+#include "robot_msgs/msg/competition_info.hpp"
+
 namespace pb2025_sentry_behavior
 {
 
@@ -20,6 +22,8 @@ BT::PortsList SentryPostureManager::providedPorts()
   return {
     BT::InputPort<std::string>(
       "topic_name", "/sentry_posture_cmd", "Posture command topic"),
+    BT::InputPort<robot_msgs::msg::CompetitionInfo>(
+      "status_port", "{@referee_robotStatus}", "CompetitionInfo port on blackboard"),
     BT::InputPort<robot_msgs::msg::OmniPerception>(
       "enemy_port", "{@target_info}", "OmniPerception target info on blackboard"),
     BT::InputPort<double>(
@@ -41,6 +45,7 @@ BT::NodeStatus SentryPostureManager::tick()
   latest_enemy_target_.reset();
   latest_enemy_target_rx_time_sec_.reset();
 
+  const auto status = getInput<robot_msgs::msg::CompetitionInfo>("status_port");
   if (auto enemy_target = getInput<robot_msgs::msg::OmniPerception>("enemy_port")) {
     latest_enemy_target_ = enemy_target.value();
   }
@@ -51,7 +56,9 @@ BT::NodeStatus SentryPostureManager::tick()
   const bool enemy_visible = isEnemyVisible(config, now_sec);
   const uint8_t desired_posture = chooseDesiredPosture(config, enemy_visible, now_sec);
   applyCooldown(desired_posture, now_sec, config.cooldown_sec);
-  publishPosture(config, current_posture_);
+  if (status && current_posture_ != static_cast<uint8_t>(status.value().sentry_posture)) {
+    publishPosture(config, current_posture_);
+  }
 
   return BT::NodeStatus::SUCCESS;
 }
@@ -90,7 +97,7 @@ uint8_t SentryPostureManager::chooseDesiredPosture(
     return kAttackPosture;
   }
 
-  return kMovePosture;
+  return kDefensePosture;
 }
 
 void SentryPostureManager::applyCooldown(
@@ -114,8 +121,6 @@ void SentryPostureManager::publishPosture(const Config & config, uint8_t posture
   createPublisherIfNeeded(config.topic_name);
   std_msgs::msg::UInt8 msg;
   msg.data = posture;
-  // Publish every tick so a lower controller that rejects commands during cooldown
-  // can still accept the same request once its own cooldown expires.
   posture_pub_->publish(msg);
 }
 

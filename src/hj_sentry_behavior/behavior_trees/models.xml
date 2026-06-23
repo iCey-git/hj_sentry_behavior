@@ -171,6 +171,7 @@
             <input_port name="enemy_stale_timeout_sec" type="double" default="0.300000">Enemy message stale timeout</input_port>
             <input_port name="enemy_rx_time_sec" type="double" default="{@target_info_rx_time_sec}">Last receive time of target_info in ROS time seconds</input_port>
             <input_port name="enemy_max_distance" type="double" default="8.000000">Max enemy distance for attack posture</input_port>
+            <input_port name="status_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
             <input_port name="enemy_port" type="robot_msgs::msg::OmniPerception_&lt;std::allocator&lt;void&gt; &gt;" default="{@target_info}">OmniPerception target info on blackboard</input_port>
             <input_port name="topic_name" type="std::string" default="/sentry_posture_cmd">Posture command topic</input_port>
         </Action>

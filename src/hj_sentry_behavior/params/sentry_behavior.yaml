@@ -65,7 +65,7 @@ bt_action_server:
     # 保卫基地参数
     base_protect_hp_threshold: 1500             # 我方基地 HP 低于此值则切入守基地模式
 
-    # 姿态切换参数 1=进攻, 3=移动
+    # 姿态切换参数 1=进攻, 2=防御
     posture_cooldown_sec: 5.0                   # 每次切换姿态后的冷却时间
     posture_enemy_stale_timeout_sec: 0.3        # 视觉敌人消息超时
     posture_enemy_max_distance: 8.0             # 进入进攻姿态的最大敌人距离
