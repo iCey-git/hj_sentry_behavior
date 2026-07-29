@@ -192,6 +192,9 @@
       <input_port name="goal_pose_topic"
                   default="/goal_pose"
                   type="std::string">Goal pose topic for yaw controller</input_port>
+      <input_port name="cmd_vel_topic"
+                  default="cmd_vel"
+                  type="std::string">Twist topic used for halt command</input_port>
     </Action>
     <Action ID="PublishModeControl">
       <input_port name="chassis_gyro"

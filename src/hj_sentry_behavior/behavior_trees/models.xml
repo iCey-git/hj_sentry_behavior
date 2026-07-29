@@ -51,7 +51,13 @@
             <input_port name="expected_game_progress" type="int" default="4">Expected game progress stage</input_port>
             <input_port name="key_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_gameStatus}">CompetitionInfo port on blackboard</input_port>
         </Condition>
-        
+        <Condition ID="IsRfidDetected">
+            <input_port name="friendly_supply_zone_exchange" type="bool" default="false">己方与兑换区重叠的补给区</input_port>
+            <input_port name="friendly_supply_zone_non_exchange" type="bool" default="false">己方与兑换区不重叠的补给区 / RMUL 补给区</input_port>
+            <input_port name="center_gain_point" type="bool" default="false">中心增益点（仅 RMUL 适用）</input_port>
+            <input_port name="friendly_fortress_gain_point" type="bool" default="false">己方堡垒增益点</input_port>
+            <input_port name="key_port" type="robot_msgs::msg::RfidStatus_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_rfidStatus}">RfidStatus port on blackboard</input_port>
+        </Condition>
         <Condition ID="IsStatusOK">
             <input_port name="ammo_min" type="int" default="0">Lower then minimum ammo will return FAILURE</input_port>
             <input_port name="hp_recover" type="int" default="600">HP threshold to stop retreat (full HP)</input_port>
@@ -66,29 +72,10 @@
             <input_port name="waypoint_file" type="std::string" default="">CSV 路线文件路径，支持包内路径和 COD waypoint_editor 格式</input_port>
         </Action>
         <Action ID="Nav2Pose">
+            <input_port name="cmd_vel_topic" type="std::string" default="cmd_vel">Twist topic used for halt command</input_port>
             <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
             <input_port name="goal_pose_topic" type="std::string" default="/goal_pose">Goal pose topic for yaw controller</input_port>
             <input_port name="action_name" type="std::string" default="navigate_to_pose">Action server name</input_port>
-        </Action>
-        <Action ID="Nav2PoseRoughRoad">
-            <input_port name="rough_direct_drive_enabled" type="bool" default="true">Enable rough road direct drive intercept</input_port>
-            <input_port name="highland_to_home_vyaw" type="double" default="0.000000">Angular velocity from highland to home</input_port>
-            <input_port name="highland_to_home_vy" type="double" default="0.000000">Linear Y velocity from highland to home</input_port>
-            <input_port name="action_name" type="std::string" default="navigate_to_pose">Action server name</input_port>
-            <input_port name="home_to_highland_vyaw" type="double" default="0.000000">Angular velocity from home to highland</input_port>
-            <input_port name="goal_pose_topic" type="std::string" default="/goal_pose">Goal pose topic for yaw controller</input_port>
-            <input_port name="highland_to_home_vx" type="double" default="0.800000">Linear X velocity from highland to home</input_port>
-            <input_port name="rough_road_polygon" type="std::string" default="">Rough road polygon x,y;x,y;...</input_port>
-            <input_port name="rough_direct_drive_polygon" type="std::string" default="">Direct-drive rough road polygon x,y;x,y;...</input_port>
-            <input_port name="base_frame" type="std::string" default="base_footprint">Robot base frame</input_port>
-            <input_port name="cmd_vel_topic" type="std::string" default="cmd_vel">Twist topic for rough road override</input_port>
-            <input_port name="rough_home_side_anchor" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Reference anchor on the home side of rough road</input_port>
-            <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
-            <input_port name="rough_cross_timeout_sec" type="double" default="6.000000">Timeout for manual rough road crossing</input_port>
-            <input_port name="home_to_highland_vy" type="double" default="0.000000">Linear Y velocity from home to highland</input_port>
-            <input_port name="map_frame" type="std::string" default="map">Map frame</input_port>
-            <input_port name="rough_highland_side_anchor" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="0;0;0">Reference anchor on the highland side of rough road</input_port>
-            <input_port name="home_to_highland_vx" type="double" default="0.800000">Linear X velocity from home to highland</input_port>
         </Action>
         <Action ID="Nav2ThroughPoses">
             <input_port name="goals" type="std::vector&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;, std::allocator&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt; &gt; &gt;">Waypoint list</input_port>
@@ -171,11 +158,12 @@
             <input_port name="enemy_stale_timeout_sec" type="double" default="0.300000">Enemy message stale timeout</input_port>
             <input_port name="enemy_rx_time_sec" type="double" default="{@target_info_rx_time_sec}">Last receive time of target_info in ROS time seconds</input_port>
             <input_port name="enemy_max_distance" type="double" default="8.000000">Max enemy distance for attack posture</input_port>
-            <input_port name="status_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
             <input_port name="enemy_port" type="robot_msgs::msg::OmniPerception_&lt;std::allocator&lt;void&gt; &gt;" default="{@target_info}">OmniPerception target info on blackboard</input_port>
+            <input_port name="status_port" type="robot_msgs::msg::CompetitionInfo_&lt;std::allocator&lt;void&gt; &gt;" default="{@referee_robotStatus}">CompetitionInfo port on blackboard</input_port>
             <input_port name="topic_name" type="std::string" default="/sentry_posture_cmd">Posture command topic</input_port>
         </Action>
         <Decorator ID="TickAfterTimeout">
+            <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Optional goal that triggers the child immediately when changed</input_port>
             <input_port name="timeout" type="float">time in s to wait before ticking child again</input_port>
         </Decorator>
         <Action ID="UpdateManualNavGoal">

@@ -34,6 +34,7 @@
             <input_port name="goal" default="0;0;0" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
             <input_port name="action_name" default="navigate_to_pose" type="std::string">Action server name</input_port>
             <input_port name="goal_pose_topic" default="/goal_pose" type="std::string">Goal pose topic for yaw controller</input_port>
+            <input_port name="cmd_vel_topic" default="cmd_vel" type="std::string">Twist topic used for halt command</input_port>
         </Action>
         <Action ID="PublishModeControl">
             <input_port name="chassis_gyro" default="0" type="int">0: off, 1: on, 2: alignment correction</input_port>
@@ -104,6 +105,7 @@
         </Action>
         <Decorator ID="TickAfterTimeout">
             <input_port name="timeout" type="float">time in s to wait before ticking child again</input_port>
+            <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Optional goal that triggers the child immediately when changed</input_port>
         </Decorator>
     </TreeNodesModel>
 </root>

@@ -58,9 +58,6 @@ list(APPEND plugin_libs is_blackboard_bool)
 ament_auto_add_library(nav2_pose SHARED plugins/action/nav2_pose.cpp)
 list(APPEND plugin_libs nav2_pose)
 
-ament_auto_add_library(nav2_pose_rough_road SHARED plugins/action/nav2_pose_rough_road.cpp)
-list(APPEND plugin_libs nav2_pose_rough_road)
-
 ament_auto_add_library(nav2_through_poses SHARED plugins/action/nav2_through_poses.cpp)
 list(APPEND plugin_libs nav2_through_poses)
 

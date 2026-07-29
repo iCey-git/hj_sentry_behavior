@@ -106,8 +106,6 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
     "enemy_outpost_gain_point", "12.43687629699707;3.2079238891601562;0");
   set_pose_parameter_to_blackboard("post_outpost_alt_point_a_goal", "5.5;-4.1;0");
   set_pose_parameter_to_blackboard("post_outpost_alt_point_b_goal", "5.5;-2.5;0");
-  set_pose_parameter_to_blackboard("rough_home_side_anchor", "-0.9;-7.0;0");
-  set_pose_parameter_to_blackboard("rough_highland_side_anchor", "8.0;-7.0;0");
   set_parameter_to_blackboard("single_goal_refresh_sec", rclcpp::ParameterValue(10.0));
   set_parameter_to_blackboard("our_side", rclcpp::ParameterValue(std::string("red")));
   set_double_parameter_to_blackboard("field_length_m", 28.0);
@@ -115,13 +113,6 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
   set_double_parameter_to_blackboard("manual_nav_map_offset_x", -3.68);
   set_double_parameter_to_blackboard("manual_nav_map_offset_y", -8.46);
   set_double_parameter_to_blackboard("manual_nav_goal_yaw", 0.0);
-  set_double_parameter_to_blackboard("rough_cross_timeout_sec", 6.0);
-  set_double_parameter_to_blackboard("home_to_highland_vx", 0.8);
-  set_double_parameter_to_blackboard("home_to_highland_vy", 0.0);
-  set_double_parameter_to_blackboard("home_to_highland_vyaw", 0.0);
-  set_double_parameter_to_blackboard("highland_to_home_vx", 0.8);
-  set_double_parameter_to_blackboard("highland_to_home_vy", 0.0);
-  set_double_parameter_to_blackboard("highland_to_home_vyaw", 0.0);
   set_parameter_to_blackboard(
     "supply_our_half_route", rclcpp::ParameterValue(std::string{}));
   set_parameter_to_blackboard(
@@ -133,8 +124,6 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
   set_parameter_to_blackboard(
     "supply_u_inner_polygon", rclcpp::ParameterValue(std::string{}));
   set_parameter_to_blackboard("rough_road_polygon", rclcpp::ParameterValue(std::string{}));
-  set_parameter_to_blackboard("rough_direct_drive_polygon", rclcpp::ParameterValue(std::string{}));
-  set_parameter_to_blackboard("rough_direct_drive_enabled", rclcpp::ParameterValue(true));
   set_parameter_to_blackboard("highland_polygon", rclcpp::ParameterValue(std::string{}));
   set_parameter_to_blackboard("base_protect_hp_threshold", rclcpp::ParameterValue(1500));
   set_double_parameter_to_blackboard("posture_cooldown_sec", 5.0);

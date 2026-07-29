@@ -9,6 +9,7 @@
 #include "behaviortree_cpp/action_node.h"
 #include "behaviortree_ros2/ros_node_params.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 #include "nav2_msgs/action/navigate_to_pose.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
@@ -32,25 +33,34 @@ public:
   void onHalted() override;
 
 private:
+  bool configurePublishers();
   bool createClient(const std::string & action_name);
   bool sendGoal(const geometry_msgs::msg::PoseStamped & goal);
   void publishGoalPose(const geometry_msgs::msg::PoseStamped & goal);
+  bool cancelActiveGoal();
+  void resetGoalState();
+  void publishZeroTwist();
+
   static bool goalsEqual(
     const geometry_msgs::msg::PoseStamped & lhs, const geometry_msgs::msg::PoseStamped & rhs);
-  void resetGoalState();
 
   rclcpp::Node::SharedPtr node_;
   std::string action_name_;
   std::string goal_pose_topic_;
+  std::string cmd_vel_topic_;
   std::chrono::milliseconds server_timeout_;
   std::chrono::milliseconds wait_for_server_timeout_;
   rclcpp::CallbackGroup::SharedPtr callback_group_;
   rclcpp::executors::SingleThreadedExecutor callback_executor_;
   rclcpp_action::Client<NavigateToPose>::SharedPtr action_client_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pose_publisher_;
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_publisher_;
   GoalHandleNavigateToPose::SharedPtr goal_handle_;
+  geometry_msgs::msg::PoseStamped target_goal_;
   geometry_msgs::msg::PoseStamped active_goal_;
   std::shared_future<GoalHandleNavigateToPose::WrappedResult> result_future_;
+  bool goal_sent_ = false;
+  double last_send_attempt_sec_ = 0.0;
 };
 
 }  // namespace pb2025_sentry_behavior

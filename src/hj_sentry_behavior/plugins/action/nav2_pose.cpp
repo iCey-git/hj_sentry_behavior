@@ -1,6 +1,8 @@
 #include "pb2025_sentry_behavior/plugins/action/nav2_pose.hpp"
 
 #include <cmath>
+#include <stdexcept>
+#include <string>
 
 #include "action_msgs/msg/goal_status.hpp"
 #include "pb2025_sentry_behavior/custom_types.hpp"
@@ -13,10 +15,7 @@ namespace
 
 constexpr double kGoalEpsilon = 1e-6;
 
-bool nearlyEqual(double lhs, double rhs)
-{
-  return std::abs(lhs - rhs) <= kGoalEpsilon;
-}
+bool nearlyEqual(double lhs, double rhs) { return std::abs(lhs - rhs) <= kGoalEpsilon; }
 
 }  // namespace
 
@@ -25,6 +24,7 @@ Nav2PoseAction::Nav2PoseAction(
 : BT::StatefulActionNode(name, conf),
   action_name_(params.default_port_value.empty() ? "navigate_to_pose" : params.default_port_value),
   goal_pose_topic_("/goal_pose"),
+  cmd_vel_topic_("cmd_vel"),
   server_timeout_(params.server_timeout),
   wait_for_server_timeout_(params.wait_for_server_timeout)
 {
@@ -33,55 +33,59 @@ Nav2PoseAction::Nav2PoseAction(
     throw std::logic_error("RosNodeParams doesn't contain a valid ROS node");
   }
 
-  callback_group_ = node_->create_callback_group(
-    rclcpp::CallbackGroupType::MutuallyExclusive, false);
+  callback_group_ =
+    node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
   callback_executor_.add_callback_group(callback_group_, node_->get_node_base_interface());
-  goal_pose_publisher_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(goal_pose_topic_, 10);
+
+  goal_pose_publisher_ =
+    node_->create_publisher<geometry_msgs::msg::PoseStamped>(goal_pose_topic_, 10);
+  cmd_vel_publisher_ = node_->create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, 10);
 }
 
 BT::PortsList Nav2PoseAction::providedPorts()
 {
   return {
     BT::InputPort<std::string>("action_name", "navigate_to_pose", "Action server name"),
-    BT::InputPort<std::string>("goal_pose_topic", "/goal_pose", "Goal pose topic for yaw controller"),
+    BT::InputPort<std::string>(
+      "goal_pose_topic", "/goal_pose", "Goal pose topic for yaw controller"),
     BT::InputPort<geometry_msgs::msg::PoseStamped>(
       "goal", "0;0;0", "Expected goal pose that send to nav2. Fill with format `x;y;yaw`"),
+    BT::InputPort<std::string>("cmd_vel_topic", "cmd_vel", "Twist topic used for halt command"),
   };
 }
 
 BT::NodeStatus Nav2PoseAction::onStart()
 {
-  auto goal = getInput<geometry_msgs::msg::PoseStamped>("goal");
+  goal_sent_ = false;
+  last_send_attempt_sec_ = 0.0;
+
+  const auto goal = getInput<geometry_msgs::msg::PoseStamped>("goal");
   if (!goal) {
     RCLCPP_ERROR(node_->get_logger(), "[%s] goal is not set", name().c_str());
     return BT::NodeStatus::FAILURE;
   }
 
-  auto action_name = getInput<std::string>("action_name");
+  const auto action_name = getInput<std::string>("action_name");
   if (!action_name) {
     RCLCPP_ERROR(node_->get_logger(), "[%s] action_name is not set", name().c_str());
     return BT::NodeStatus::FAILURE;
   }
 
-  auto goal_pose_topic = getInput<std::string>("goal_pose_topic");
-  if (!goal_pose_topic) {
-    RCLCPP_ERROR(node_->get_logger(), "[%s] goal_pose_topic is not set", name().c_str());
+  if (!configurePublishers()) {
     return BT::NodeStatus::FAILURE;
   }
-  if (goal_pose_topic_ != goal_pose_topic.value()) {
-    goal_pose_topic_ = goal_pose_topic.value();
-    goal_pose_publisher_ =
-      node_->create_publisher<geometry_msgs::msg::PoseStamped>(goal_pose_topic_, 10);
-  }
 
+  target_goal_ = goal.value();
+  last_send_attempt_sec_ = node_->now().seconds();
   if (!createClient(action_name.value())) {
-    return BT::NodeStatus::FAILURE;
+    return BT::NodeStatus::RUNNING;
   }
 
-  if (!sendGoal(goal.value())) {
-    return BT::NodeStatus::FAILURE;
+  if (!sendGoal(target_goal_)) {
+    return BT::NodeStatus::RUNNING;
   }
 
+  goal_sent_ = true;
   return BT::NodeStatus::RUNNING;
 }
 
@@ -89,10 +93,51 @@ BT::NodeStatus Nav2PoseAction::onRunning()
 {
   callback_executor_.spin_some();
 
-  auto goal = getInput<geometry_msgs::msg::PoseStamped>("goal");
+  if (!goal_sent_) {
+    const double now = node_->now().seconds();
+    if (now - last_send_attempt_sec_ < 2.0) {
+      return BT::NodeStatus::RUNNING;
+    }
+
+    last_send_attempt_sec_ = now;
+    if (!createClient(action_name_)) {
+      return BT::NodeStatus::RUNNING;
+    }
+
+    const auto goal = getInput<geometry_msgs::msg::PoseStamped>("goal");
+    if (!goal) {
+      return BT::NodeStatus::FAILURE;
+    }
+    target_goal_ = goal.value();
+    if (sendGoal(target_goal_)) {
+      goal_sent_ = true;
+    }
+    return BT::NodeStatus::RUNNING;
+  }
+
+  const auto goal = getInput<geometry_msgs::msg::PoseStamped>("goal");
   if (!goal) {
     RCLCPP_ERROR(node_->get_logger(), "[%s] goal is not set while running", name().c_str());
     return BT::NodeStatus::FAILURE;
+  }
+
+  if (!goalsEqual(goal.value(), target_goal_)) {
+    RCLCPP_INFO(node_->get_logger(), "[%s] navigation goal updated", name().c_str());
+
+    goal_sent_ = false;
+    cancelActiveGoal();
+    resetGoalState();
+    target_goal_ = goal.value();
+    last_send_attempt_sec_ = node_->now().seconds();
+
+    if (!configurePublishers() || !createClient(action_name_)) {
+      return BT::NodeStatus::RUNNING;
+    }
+
+    if (sendGoal(target_goal_)) {
+      goal_sent_ = true;
+    }
+    return BT::NodeStatus::RUNNING;
   }
 
   if (!goal_handle_) {
@@ -100,15 +145,9 @@ BT::NodeStatus Nav2PoseAction::onRunning()
     return BT::NodeStatus::FAILURE;
   }
 
-  if (!goalsEqual(goal.value(), active_goal_)) {
-    RCLCPP_INFO(node_->get_logger(), "[%s] navigation goal updated", name().c_str());
-    if (!sendGoal(goal.value())) {
-      return BT::NodeStatus::FAILURE;
-    }
-    return BT::NodeStatus::RUNNING;
-  }
-
-  if (result_future_.valid() && result_future_.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+  if (
+    result_future_.valid() &&
+    result_future_.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
     const auto result = result_future_.get();
     switch (result.code) {
       case rclcpp_action::ResultCode::SUCCEEDED:
@@ -163,40 +202,50 @@ BT::NodeStatus Nav2PoseAction::onRunning()
 void Nav2PoseAction::onHalted()
 {
   callback_executor_.spin_some();
+  publishZeroTwist();
+  cancelActiveGoal();
+  resetGoalState();
+  goal_sent_ = false;
+  last_send_attempt_sec_ = 0.0;
+}
 
-  if (goal_handle_) {
-    const auto status = goal_handle_->get_status();
-    if (
-      status == action_msgs::msg::GoalStatus::STATUS_ACCEPTED ||
-      status == action_msgs::msg::GoalStatus::STATUS_EXECUTING ||
-      status == action_msgs::msg::GoalStatus::STATUS_CANCELING)
-    {
-      auto cancel_future = action_client_->async_cancel_goal(goal_handle_);
-      if (
-        callback_executor_.spin_until_future_complete(cancel_future, server_timeout_) !=
-        rclcpp::FutureReturnCode::SUCCESS)
-      {
-        RCLCPP_ERROR(node_->get_logger(), "[%s] failed to cancel navigation goal", name().c_str());
-      } else {
-        RCLCPP_INFO(node_->get_logger(), "[%s] navigation goal canceled", name().c_str());
-      }
-    }
+bool Nav2PoseAction::configurePublishers()
+{
+  const auto goal_pose_topic = getInput<std::string>("goal_pose_topic");
+  if (!goal_pose_topic || goal_pose_topic->empty()) {
+    RCLCPP_ERROR(node_->get_logger(), "[%s] goal_pose_topic is not set", name().c_str());
+    return false;
+  }
+  if (goal_pose_topic_ != goal_pose_topic.value()) {
+    goal_pose_topic_ = goal_pose_topic.value();
+    goal_pose_publisher_ =
+      node_->create_publisher<geometry_msgs::msg::PoseStamped>(goal_pose_topic_, 10);
   }
 
-  resetGoalState();
+  const auto cmd_vel_topic = getInput<std::string>("cmd_vel_topic");
+  if (!cmd_vel_topic || cmd_vel_topic->empty()) {
+    RCLCPP_ERROR(node_->get_logger(), "[%s] cmd_vel_topic is not set", name().c_str());
+    return false;
+  }
+  if (cmd_vel_topic_ != cmd_vel_topic.value()) {
+    cmd_vel_topic_ = cmd_vel_topic.value();
+    cmd_vel_publisher_ = node_->create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, 10);
+  }
+
+  return true;
 }
 
 bool Nav2PoseAction::createClient(const std::string & action_name)
 {
-  if (action_client_ && action_name_ == action_name) {
-    return true;
+  if (!action_client_ || action_name_ != action_name) {
+    action_name_ = action_name;
+    action_client_ =
+      rclcpp_action::create_client<NavigateToPose>(node_, action_name_, callback_group_);
   }
 
-  action_name_ = action_name;
-  action_client_ =
-    rclcpp_action::create_client<NavigateToPose>(node_, action_name_, callback_group_);
-
-  if (!action_client_->wait_for_action_server(wait_for_server_timeout_)) {
+  if (
+    !action_client_->action_server_is_ready() &&
+    !action_client_->wait_for_action_server(wait_for_server_timeout_)) {
     RCLCPP_ERROR(
       node_->get_logger(), "[%s] action server '%s' is not reachable", name().c_str(),
       action_name_.c_str());
@@ -214,54 +263,72 @@ bool Nav2PoseAction::sendGoal(const geometry_msgs::msg::PoseStamped & goal)
   navigation_goal.pose.header.stamp = node_->now();
   publishGoalPose(navigation_goal.pose);
 
-  auto future_goal_handle = action_client_->async_send_goal(navigation_goal);
-  if (
-    callback_executor_.spin_until_future_complete(future_goal_handle, server_timeout_) !=
-    rclcpp::FutureReturnCode::SUCCESS)
-  {
-    RCLCPP_ERROR(node_->get_logger(), "[%s] send goal failed", name().c_str());
+  try {
+    auto future_goal_handle = action_client_->async_send_goal(navigation_goal);
+    if (
+      callback_executor_.spin_until_future_complete(future_goal_handle, server_timeout_) !=
+      rclcpp::FutureReturnCode::SUCCESS) {
+      RCLCPP_ERROR(node_->get_logger(), "[%s] send goal failed", name().c_str());
+      return false;
+    }
+
+    auto goal_handle = future_goal_handle.get();
+    if (!goal_handle) {
+      RCLCPP_ERROR(node_->get_logger(), "[%s] goal was rejected by nav2", name().c_str());
+      return false;
+    }
+
+    goal_handle_ = goal_handle;
+    active_goal_ = navigation_goal.pose;
+    result_future_ = action_client_->async_get_result(goal_handle_);
+  } catch (const std::exception & ex) {
+    RCLCPP_ERROR(node_->get_logger(), "[%s] send goal exception: %s", name().c_str(), ex.what());
     return false;
   }
-
-  auto goal_handle = future_goal_handle.get();
-  if (!goal_handle) {
-    RCLCPP_ERROR(node_->get_logger(), "[%s] goal was rejected by nav2", name().c_str());
-    return false;
-  }
-
-  goal_handle_ = goal_handle;
-  active_goal_ = navigation_goal.pose;
-  result_future_ = action_client_->async_get_result(goal_handle_);
 
   RCLCPP_INFO(
     node_->get_logger(), "[%s] navigating to pose [%.3f, %.3f]", name().c_str(),
     active_goal_.pose.position.x, active_goal_.pose.position.y);
-
   return true;
 }
 
 void Nav2PoseAction::publishGoalPose(const geometry_msgs::msg::PoseStamped & goal)
 {
-  if (!goal_pose_publisher_) {
-    return;
+  if (goal_pose_publisher_) {
+    goal_pose_publisher_->publish(goal);
   }
-
-  goal_pose_publisher_->publish(goal);
-  RCLCPP_DEBUG(
-    node_->get_logger(), "[%s] published goal pose to %s", name().c_str(), goal_pose_topic_.c_str());
 }
 
-bool Nav2PoseAction::goalsEqual(
-  const geometry_msgs::msg::PoseStamped & lhs, const geometry_msgs::msg::PoseStamped & rhs)
+bool Nav2PoseAction::cancelActiveGoal()
 {
-  return
-    nearlyEqual(lhs.pose.position.x, rhs.pose.position.x) &&
-    nearlyEqual(lhs.pose.position.y, rhs.pose.position.y) &&
-    nearlyEqual(lhs.pose.position.z, rhs.pose.position.z) &&
-    nearlyEqual(lhs.pose.orientation.x, rhs.pose.orientation.x) &&
-    nearlyEqual(lhs.pose.orientation.y, rhs.pose.orientation.y) &&
-    nearlyEqual(lhs.pose.orientation.z, rhs.pose.orientation.z) &&
-    nearlyEqual(lhs.pose.orientation.w, rhs.pose.orientation.w);
+  if (!goal_handle_) {
+    return true;
+  }
+
+  const auto status = goal_handle_->get_status();
+  if (
+    status != action_msgs::msg::GoalStatus::STATUS_ACCEPTED &&
+    status != action_msgs::msg::GoalStatus::STATUS_EXECUTING &&
+    status != action_msgs::msg::GoalStatus::STATUS_CANCELING) {
+    return true;
+  }
+
+  try {
+    auto cancel_future = action_client_->async_cancel_goal(goal_handle_);
+    if (
+      callback_executor_.spin_until_future_complete(cancel_future, server_timeout_) !=
+      rclcpp::FutureReturnCode::SUCCESS) {
+      RCLCPP_WARN(node_->get_logger(), "[%s] failed to cancel active goal", name().c_str());
+      return false;
+    }
+  } catch (const std::exception & ex) {
+    RCLCPP_WARN(node_->get_logger(), "[%s] cancel goal exception: %s", name().c_str(), ex.what());
+    return false;
+  }
+
+  RCLCPP_INFO(node_->get_logger(), "[%s] active navigation goal canceled", name().c_str());
+  resetGoalState();
+  return true;
 }
 
 void Nav2PoseAction::resetGoalState()
@@ -269,6 +336,25 @@ void Nav2PoseAction::resetGoalState()
   goal_handle_.reset();
   active_goal_ = geometry_msgs::msg::PoseStamped();
   result_future_ = {};
+}
+
+void Nav2PoseAction::publishZeroTwist()
+{
+  if (cmd_vel_publisher_) {
+    cmd_vel_publisher_->publish(geometry_msgs::msg::Twist{});
+  }
+}
+
+bool Nav2PoseAction::goalsEqual(
+  const geometry_msgs::msg::PoseStamped & lhs, const geometry_msgs::msg::PoseStamped & rhs)
+{
+  return nearlyEqual(lhs.pose.position.x, rhs.pose.position.x) &&
+         nearlyEqual(lhs.pose.position.y, rhs.pose.position.y) &&
+         nearlyEqual(lhs.pose.position.z, rhs.pose.position.z) &&
+         nearlyEqual(lhs.pose.orientation.x, rhs.pose.orientation.x) &&
+         nearlyEqual(lhs.pose.orientation.y, rhs.pose.orientation.y) &&
+         nearlyEqual(lhs.pose.orientation.z, rhs.pose.orientation.z) &&
+         nearlyEqual(lhs.pose.orientation.w, rhs.pose.orientation.w);
 }
 
 }  // namespace pb2025_sentry_behavior
