@@ -27,15 +27,16 @@ bt_action_server:
     # outpost_pressure_goal: "8.46983528137207;3.1363728046417236;0"
     outpost_pressure_goal: "0.28;0.66;0"
 
-    post_outpost_behavior_mode: "hold_point"  # default_patrol / hold_point / alt_patrol
+    post_outpost_behavior_mode: "alt_patrol"  # hold_point  / alt_patrol
     patrol_point_a_goal: "0.28;0.66;0"
     patrol_point_b_goal: "8.120878219604492;-3.140058994293213;0"
     post_outpost_alt_point_a_goal: "10.530373573303223;2.9102365970611572;0"
     post_outpost_alt_point_b_goal: "8.303040504455566;-3.1416804790496826;0"
     post_outpost_hold_goal: "11.39123249053955;2.5960257053375244;0"
-    enemy_outpost_gain_point: "12.43687629699707;3.2079238891601562;0"
     single_goal_refresh_sec: 10.0
-    our_side: "blue"                           # red / blue / auto(auto 预留，当前未实现)
+
+    # 操作手发点位坐标对齐
+    our_side: "blue"                           # red / blue
     field_length_m: 28.0
     field_width_m: 15.0
     manual_nav_map_offset_x: -3.68

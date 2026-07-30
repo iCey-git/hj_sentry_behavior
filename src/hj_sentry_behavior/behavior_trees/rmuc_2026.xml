@@ -32,14 +32,8 @@
                                 wp_idx="{route_wp_idx}"
                                 current_goal="{current_goal}"
                                 current_wait_sec="{current_wait_sec}"/>
-            <!-- 导航途中: 小陀螺 + 正常移动模式 -->
-            <PublishModeControl chassis_gyro="1"
-                                patrol_mode="2"
-                                power_mode="12"
-                                rough_road_active="{@rough_road_active}"
-                                rough_chassis_gyro="0"
-                                duration="0"
-                                topic_name="/mode_ctrl"/>
+            <!-- 导航途中: 敌方前哨存活时不开小陀螺，前哨死亡后恢复小陀螺 -->
+            <SubTree ID="publish_nav_mode"/>
             <!-- 当前多点实现是逐点 NavigateToPose，不是 ThroughPoses。 -->
             <ForceSuccess>
               <Nav2Pose action_name="navigate_to_pose"
@@ -58,9 +52,20 @@
     </SequenceWithMemory>
   </BehaviorTree>
 
-  <!-- 单点导航 用 Nav2Pose 接口 -->
-  <BehaviorTree ID="navigate_single_goal">
-    <Sequence>
+  <!-- 模式发布: 导航途中
+       敌方前哨站存活前 chassis_gyro=0；敌方前哨站死亡后 chassis_gyro=1。
+       颠簸区 rough_road_active 时仍强制 rough_chassis_gyro=0。 -->
+  <BehaviorTree ID="publish_nav_mode">
+    <Fallback>
+      <Sequence _while="@enemy_outpost_hp&gt;0">
+        <PublishModeControl chassis_gyro="0"
+                            patrol_mode="2"
+                            power_mode="12"
+                            rough_road_active="{@rough_road_active}"
+                            rough_chassis_gyro="0"
+                            duration="0"
+                            topic_name="/mode_ctrl"/>
+      </Sequence>
       <PublishModeControl chassis_gyro="1"
                           patrol_mode="2"
                           power_mode="12"
@@ -68,6 +73,67 @@
                           rough_chassis_gyro="0"
                           duration="0"
                           topic_name="/mode_ctrl"/>
+    </Fallback>
+  </BehaviorTree>
+
+  <!-- 模式发布: 到点保持
+       敌方前哨站存活前 chassis_gyro=0；敌方前哨站死亡后恢复原保持纠偏 chassis_gyro=2。 -->
+  <BehaviorTree ID="publish_hold_mode">
+    <Fallback>
+      <Sequence _while="@enemy_outpost_hp&gt;0">
+        <PublishModeControl chassis_gyro="0"
+                            patrol_mode="2"
+                            power_mode="12"
+                            rough_road_active="{@rough_road_active}"
+                            rough_chassis_gyro="0"
+                            duration="0"
+                            topic_name="/mode_ctrl"/>
+      </Sequence>
+      <PublishModeControl chassis_gyro="2"
+                          patrol_mode="2"
+                          power_mode="12"
+                          rough_road_active="{@rough_road_active}"
+                          rough_chassis_gyro="0"
+                          duration="0"
+                          topic_name="/mode_ctrl"/>
+    </Fallback>
+  </BehaviorTree>
+
+  <!-- 颠簸区底盘模式更新
+       敌方前哨站存活前离开颠簸区恢复 0；敌方前哨站死亡后离开颠簸区恢复 1。 -->
+  <BehaviorTree ID="update_rough_road_mode">
+    <Fallback>
+      <Sequence _while="@enemy_outpost_hp&gt;0">
+        <RoughRoadSpeedControl rough_road_polygon="{@rough_road_polygon}"
+                               rough_road_active="{@rough_road_active}"
+                               publish_mode_control="true"
+                               mode_topic="/mode_ctrl"
+                               rough_chassis_gyro="0"
+                               normal_chassis_gyro="0"
+                               patrol_mode="2"
+                               power_mode="12"
+                               control_speed="false"
+                               map_frame="map"
+                               base_frame="base_footprint"/>
+      </Sequence>
+      <RoughRoadSpeedControl rough_road_polygon="{@rough_road_polygon}"
+                             rough_road_active="{@rough_road_active}"
+                             publish_mode_control="true"
+                             mode_topic="/mode_ctrl"
+                             rough_chassis_gyro="0"
+                             normal_chassis_gyro="1"
+                             patrol_mode="2"
+                             power_mode="12"
+                             control_speed="false"
+                             map_frame="map"
+                             base_frame="base_footprint"/>
+    </Fallback>
+  </BehaviorTree>
+
+  <!-- 单点导航 用 Nav2Pose 接口 -->
+  <BehaviorTree ID="navigate_single_goal">
+    <Sequence>
+      <SubTree ID="publish_nav_mode"/>
       <ForceSuccess>
         <Nav2Pose action_name="navigate_to_pose"
                   goal_pose_topic="/goal_pose"
@@ -83,13 +149,7 @@
       <SubTree ID="navigate_single_goal" single_goal="{single_goal}"/>
       <KeepRunningUntilFailure>
         <Sequence>
-          <PublishModeControl chassis_gyro="2"
-                              patrol_mode="2"
-                              power_mode="12"
-                              rough_road_active="{@rough_road_active}"
-                              rough_chassis_gyro="0"
-                              duration="0"
-                              topic_name="/mode_ctrl"/>
+          <SubTree ID="publish_hold_mode"/>
           <ForceSuccess>
             <TickAfterTimeout timeout="{@single_goal_refresh_sec}"
                               goal="{single_goal}">
@@ -108,13 +168,7 @@
        这里等待导航结束，但不强制要求SUCCESS，结束后直接切下一个巡逻点。 -->
   <BehaviorTree ID="navigate_patrol_goal">
     <Sequence>
-      <PublishModeControl chassis_gyro="1"
-                          patrol_mode="2"
-                          power_mode="12"
-                          rough_road_active="{@rough_road_active}"
-                          rough_chassis_gyro="0"
-                          duration="0"
-                          topic_name="/mode_ctrl"/>
+      <SubTree ID="publish_nav_mode"/>
       <ForceSuccess>
         <Nav2Pose action_name="navigate_to_pose"
                   goal_pose_topic="/goal_pose"
@@ -171,13 +225,18 @@
 
   <!-- 发现敌人分支 -->
   <BehaviorTree ID="engage_enemy">
-    <EnemyStopGate max_distance="8.0"
-                   stale_timeout_sec="0.3"
-                   linger_sec="0.8"
-                   key_port="{@target_info}"
-                   rx_time_sec="{@target_info_rx_time_sec}"
-                   rough_road_active="{@rough_road_active}"
-                   rough_chassis_gyro="0"/>
+    <Sequence>
+      <EnemyStopGate max_distance="8.0"
+                     stale_timeout_sec="0.3"
+                     linger_sec="0.8"
+                     key_port="{@target_info}"
+                     rx_time_sec="{@target_info_rx_time_sec}"
+                     rough_road_active="{@rough_road_active}"
+                     rough_chassis_gyro="0"/>
+      <!-- EnemyStopGate 内部停车时默认会发 chassis_gyro=1；
+           这里立刻按全局策略覆盖：敌方前哨存活前为 0，死亡后恢复 1。 -->
+      <SubTree ID="publish_nav_mode"/>
+    </Sequence>
   </BehaviorTree>
 
   <!-- 锁存式手发点分支：一旦收到点，就持续占据该点，直到新点覆盖 -->
@@ -222,11 +281,6 @@
     <SubTree ID="hold_single_goal" single_goal="{@post_outpost_hold_goal}"/>
   </BehaviorTree>
 
-  <!-- 前哨站击杀后 hold_point 模式的前 5 分钟抢占点 占领敌方增益区 -->
-  <BehaviorTree ID="post_outpost_gain">
-    <SubTree ID="hold_single_goal" single_goal="{@enemy_outpost_gain_point}"/>
-  </BehaviorTree>
-
   <!-- 前哨站击杀后 备用双点巡逻 -->
   <BehaviorTree ID="post_outpost_alt_patrol">
     <KeepRunningUntilFailure>
@@ -243,19 +297,14 @@
       <Sequence>
         <IsBlackboardString value="{@post_outpost_behavior_mode}"
                            expected="hold_point"/>
-        <Fallback>
-          <Sequence _while="@our_outpost_hp&gt;0 &amp;&amp; @stage_remain_time&gt;=120">
-            <SubTree ID="post_outpost_gain"/>
-          </Sequence>
-          <SubTree ID="post_outpost_hold"/>
-        </Fallback>
+        <SubTree ID="post_outpost_hold"/>
       </Sequence>
       <Sequence>
         <IsBlackboardString value="{@post_outpost_behavior_mode}"
                            expected="alt_patrol"/>
         <SubTree ID="post_outpost_alt_patrol"/>
       </Sequence>
-      <SubTree ID="patrol_by_phase"/>
+      <SubTree ID="post_outpost_alt_patrol"/>
     </Fallback>
   </BehaviorTree>
 
@@ -268,17 +317,7 @@
           <!--  比赛开始 -->
           <SubTree ID="check_game_start"/>
           <SubTree ID="manage_posture"/>
-          <RoughRoadSpeedControl rough_road_polygon="{@rough_road_polygon}"
-                                 rough_road_active="{@rough_road_active}"
-                                 publish_mode_control="true"
-                                 mode_topic="/mode_ctrl"
-                                 rough_chassis_gyro="0"
-                                 normal_chassis_gyro="1"
-                                 patrol_mode="2"
-                                 power_mode="12"
-                                 control_speed="false"
-                                 map_frame="map"
-                                 base_frame="base_footprint"/>
+          <SubTree ID="update_rough_road_mode"/>
 
           <!-- 每 tick 捕获 /competition_info 的手发点，即使当前被补给或敌情分支抢占。 -->
           <ForceSuccess>
